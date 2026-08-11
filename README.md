@@ -54,4 +54,3 @@ Repository Layer
    │
    ▼
 MySQL Database
-MySQL Database
