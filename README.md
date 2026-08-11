@@ -1,36 +1,56 @@
-## System Architecture
+# Student Management System
 
-The Student Management System follows a layered architecture using Spring Boot.
+A secure and containerized Student Management System built using Spring Boot, Spring Data JPA, MySQL, JWT Authentication, Swagger/OpenAPI, and Docker.
 
-The application is divided into multiple layers to maintain separation of concerns, improve maintainability, and simplify testing.
+## 📌 Project Overview
 
-### Architecture Layers
+The Student Management System is a backend application designed to manage student information through RESTful APIs.
 
-1. **Client Layer**
-   - Users interact with the application through Swagger UI or a REST API client.
+The application provides secure authentication using JWT and supports student data management through protected REST APIs.
 
-2. **Controller Layer**
-   - Handles HTTP requests and responses.
-   - Exposes RESTful endpoints for student and authentication operations.
+## 🚀 Features
 
-3. **Security Layer**
-   - Uses Spring Security and JWT authentication.
-   - Validates JWT tokens before allowing access to protected endpoints.
-   - Implements role-based authorization for USER and ADMIN roles.
+- JWT-based authentication
+- Secure REST APIs
+- Student management
+- MySQL database integration
+- Spring Data JPA and Hibernate
+- Global exception handling
+- Standardized API responses
+- Swagger/OpenAPI API documentation
+- Docker containerization
+- Layered Spring Boot architecture
 
-4. **Service Layer**
-   - Contains the application's business logic.
-   - Processes student operations and user authentication.
-   - Communicates with the repository layer.
+## 🛠️ Tech Stack
 
-5. **Repository Layer**
-   - Uses Spring Data JPA for database operations.
-   - Performs CRUD operations on student and user data.
+| Technology | Usage |
+|---|---|
+| Java 21 | Programming Language |
+| Spring Boot 3.5.4 | Backend Framework |
+| Spring Data JPA | Data Access |
+| Hibernate | ORM |
+| MySQL 8 | Database |
+| JWT | Authentication |
+| Swagger / OpenAPI | API Documentation |
+| Maven | Build Tool |
+| Docker | Containerization |
+| Git & GitHub | Version Control |
 
-6. **Database Layer**
-   - MySQL is used for persistent data storage.
-   - Stores student and user information.
+## 🏗️ System Architecture
 
-### Architecture Diagram
+The application follows a layered architecture:
 
-![Student Management System Architecture](docs/architecture.png)
+```text
+Client
+   │
+   ▼
+REST Controller
+   │
+   ▼
+Service Layer
+   │
+   ▼
+Repository Layer
+   │
+   ▼
+MySQL Database
