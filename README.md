@@ -54,6 +54,7 @@ Repository Layer
    │
    ▼
 MySQL Database
+```
 
 ### Architecture Diagram
 
