@@ -58,4 +58,4 @@ MySQL Database
 
 ### Architecture Diagram
 
-![Student Management System Architecture](docs/student-management-systemdocsarchitecture.png)
+![Student Management System Architecture](student-management-system/docs/student-management-systemdocsarchitecture.png)
