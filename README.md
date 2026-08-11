@@ -54,3 +54,7 @@ Repository Layer
    │
    ▼
 MySQL Database
+
+### Architecture Diagram
+
+![Student Management System Architecture](docs/student-management-systemdocsarchitecture.png)
