@@ -367,17 +367,27 @@ class StudentServiceTest {
         student.setCourse("MCA");
         student.setFee(50000.0);
 
+        StudentDTO dto = new StudentDTO(
+                1L,
+                "Suresh",
+                "suresh@gmail.com",
+                "MCA",
+                50000.0
+        );
+
         when(repository.findByName("Suresh"))
                 .thenReturn(List.of(student));
 
-        List<Student> result =
+        when(modelMapper.map(student, StudentDTO.class))
+                .thenReturn(dto);
+
+        List<StudentDTO> result =
                 studentService.getStudentByName("Suresh");
 
         assertNotNull(result);
         assertEquals(1, result.size());
         assertEquals("Suresh", result.get(0).getName());
     }
-
 
    
     // SORT STUDENTS ASCENDING
@@ -393,10 +403,21 @@ class StudentServiceTest {
         student.setCourse("MCA");
         student.setFee(50000.0);
 
+        StudentDTO dto = new StudentDTO(
+                1L,
+                "Suresh",
+                "suresh@gmail.com",
+                "MCA",
+                50000.0
+        );
+
         when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(student));
 
-        List<Student> result =
+        when(modelMapper.map(student, StudentDTO.class))
+                .thenReturn(dto);
+
+        List<StudentDTO> result =
                 studentService.sortStudents("name");
 
         assertNotNull(result);
@@ -419,10 +440,21 @@ class StudentServiceTest {
         student.setCourse("MCA");
         student.setFee(50000.0);
 
+        StudentDTO dto = new StudentDTO(
+                1L,
+                "Suresh",
+                "suresh@gmail.com",
+                "MCA",
+                50000.0
+        );
+
         when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
                 .thenReturn(List.of(student));
 
-        List<Student> result =
+        when(modelMapper.map(student, StudentDTO.class))
+                .thenReturn(dto);
+
+        List<StudentDTO> result =
                 studentService.sortStudentsDesc("name");
 
         assertNotNull(result);
@@ -445,13 +477,24 @@ class StudentServiceTest {
         student.setCourse("MCA");
         student.setFee(50000.0);
 
+        StudentDTO dto = new StudentDTO(
+                1L,
+                "Suresh",
+                "suresh@gmail.com",
+                "MCA",
+                50000.0
+        );
+
         Page<Student> page =
                 new PageImpl<>(List.of(student));
 
         when(repository.findAll(any(Pageable.class)))
                 .thenReturn(page);
 
-        Page<Student> result =
+        when(modelMapper.map(student, StudentDTO.class))
+                .thenReturn(dto);
+
+        Page<StudentDTO> result =
                 studentService.getStudents(0, 5);
 
         assertNotNull(result);
@@ -477,13 +520,24 @@ class StudentServiceTest {
         student.setCourse("MCA");
         student.setFee(50000.0);
 
+        StudentDTO dto = new StudentDTO(
+                1L,
+                "Suresh",
+                "suresh@gmail.com",
+                "MCA",
+                50000.0
+        );
+
         Page<Student> page =
                 new PageImpl<>(List.of(student));
 
         when(repository.findAll(any(Pageable.class)))
                 .thenReturn(page);
 
-        Page<Student> result =
+        when(modelMapper.map(student, StudentDTO.class))
+                .thenReturn(dto);
+
+        Page<StudentDTO> result =
                 studentService.getStudentsWithPaginationAndSorting(
                         0,
                         5,

@@ -10,7 +10,7 @@ import com.suresh.sms.entity.User;
 import com.suresh.sms.jwt.JwtUtil;
 import com.suresh.sms.repository.UserRepository;
 import com.suresh.sms.exception.DuplicateUserException;
-
+import com.suresh.sms.exception.InvalidCredentialsException;
 @Service
 public class UserService {
 
@@ -54,25 +54,15 @@ public class UserService {
     
     public String login(LoginRequest request) {
 
-        // Find user by username
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() ->
-                        new RuntimeException("Invalid username or password")
-                );
+                        new InvalidCredentialsException("Invalid username or password"));
 
-        // Check password
-        if (!passwordEncoder.matches(
-                request.getPassword(),
-                user.getPassword())) {
-
-            throw new RuntimeException("Invalid username or password");
+        if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
+            throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        // Generate JWT token
-        return jwtUtil.generateToken(
-                user.getUsername(),
-                user.getRole()
-        );
+        return jwtUtil.generateToken(user.getUsername(), user.getRole());
     }
 
 

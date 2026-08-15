@@ -1,6 +1,7 @@
 package com.suresh.sms.jwt;
 
 import java.io.IOException;
+
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -15,10 +16,12 @@ import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 @Component
 public class JwtFilter extends OncePerRequestFilter {
 
+	private static final Logger log = LoggerFactory.getLogger(JwtFilter.class);
     @Autowired
     private JwtUtil jwtUtil;
 
@@ -31,7 +34,7 @@ public class JwtFilter extends OncePerRequestFilter {
 
         String authHeader = request.getHeader("Authorization");
 
-        System.out.println("AUTH HEADER = " + authHeader);
+        log.debug("Auth header received: {}", authHeader);
 
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
 
@@ -42,8 +45,8 @@ public class JwtFilter extends OncePerRequestFilter {
                 String username = jwtUtil.extractUsername(token);
                 String role = jwtUtil.extractRole(token);
 
-                System.out.println("USERNAME = " + username);
-                System.out.println("ROLE = " + role);
+                log.debug("Extracted username: {}", username);
+                log.debug("Extracted role: {}", role);
 
                 UsernamePasswordAuthenticationToken authentication =
                         new UsernamePasswordAuthenticationToken(
@@ -64,16 +67,11 @@ public class JwtFilter extends OncePerRequestFilter {
                 SecurityContextHolder.getContext()
                         .setAuthentication(authentication);
 
-                System.out.println(
-                        "AUTHENTICATION SET = "
-                        + SecurityContextHolder.getContext()
-                                .getAuthentication()
-                );
+                
+               
             } else {
-                System.out.println("JWT TOKEN INVALID");
+            	log.debug("JWT token validation failed");
             }
-        } else {
-            System.out.println("NO BEARER TOKEN");
         }
 
         filterChain.doFilter(request, response);

@@ -1,6 +1,7 @@
 package com.suresh.sms.exception;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -13,6 +14,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+
 
 class GlobalExceptionHandlerTest {
 
@@ -126,23 +128,21 @@ class GlobalExceptionHandlerTest {
   
 
     @Test
-    void testRuntimeException() {
+    void testInvalidCredentialsException() {
 
-        RuntimeException exception =
-                new RuntimeException(
-                        "Something went wrong"
-                );
+        InvalidCredentialsException exception =
+                new InvalidCredentialsException("Invalid username or password");
 
         ResponseEntity<Map<String, Object>> response =
-                handler.handleRuntimeException(exception);
+                handler.handleInvalidCredentials(exception);
 
         assertEquals(
-                400,
+                401,
                 response.getStatusCode().value()
         );
 
         assertEquals(
-                "Something went wrong",
+                "Invalid username or password",
                 response.getBody().get("message")
         );
     }

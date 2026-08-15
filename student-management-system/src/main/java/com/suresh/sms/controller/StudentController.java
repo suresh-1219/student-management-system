@@ -2,6 +2,7 @@ package com.suresh.sms.controller;
 
 import java.util.List;
 
+
 import jakarta.validation.Valid;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -91,19 +92,13 @@ public class StudentController {
     
 
     @GetMapping("/search/{name}")
-    public ResponseEntity<ApiResponse<List<Student>>> getStudentByName(
+    public ResponseEntity<ApiResponse<List<StudentDTO>>> getStudentByName(
             @PathVariable String name) {
 
-        List<Student> students =
-                service.getStudentByName(name);
+        List<StudentDTO> students = service.getStudentByName(name);
 
         return ResponseEntity.ok(
-                new ApiResponse<>(
-                        true,
-                        "Students found successfully",
-                        students
-                )
-        );
+                new ApiResponse<>(true, "Students found successfully", students));
     }
 
 
@@ -112,11 +107,11 @@ public class StudentController {
  
 
     @GetMapping("/page")
-    public ResponseEntity<ApiResponse<Page<Student>>> getStudents(
+    public ResponseEntity<ApiResponse<Page<StudentDTO>>> getStudents(
             @RequestParam int page,
             @RequestParam int size) {
 
-        Page<Student> students =
+        Page<StudentDTO> students =
                 service.getStudents(page, size);
 
         return ResponseEntity.ok(
@@ -134,70 +129,45 @@ public class StudentController {
    
 
     @GetMapping("/sort/{field}")
-    public ResponseEntity<ApiResponse<List<Student>>> sortStudents(
+    public ResponseEntity<ApiResponse<List<StudentDTO>>> sortStudents(
             @PathVariable String field) {
 
-        List<Student> students =
-                service.sortStudents(field);
+        List<StudentDTO> students = service.sortStudents(field);
 
         return ResponseEntity.ok(
-                new ApiResponse<>(
-                        true,
-                        "Students sorted successfully",
-                        students
-                )
-        );
+                new ApiResponse<>(true, "Students sorted successfully", students));
     }
-
 
  
     // SORT DESCENDING
    
 
     @GetMapping("/sortDesc/{field}")
-    public ResponseEntity<ApiResponse<List<Student>>> sortStudentsDesc(
+    public ResponseEntity<ApiResponse<List<StudentDTO>>> sortStudentsDesc(
             @PathVariable String field) {
 
-        List<Student> students =
-                service.sortStudentsDesc(field);
+        List<StudentDTO> students = service.sortStudentsDesc(field);
 
         return ResponseEntity.ok(
-                new ApiResponse<>(
-                        true,
-                        "Students sorted successfully in descending order",
-                        students
-                )
-        );
+                new ApiResponse<>(true, "Students sorted successfully in descending order", students));
     }
-
-
     
     // PAGINATION + SORTING
     
 
     @GetMapping("/pageSort")
-    public ResponseEntity<ApiResponse<Page<Student>>>
+    public ResponseEntity<ApiResponse<Page<StudentDTO>>>
     getStudentsWithPaginationAndSorting(
             @RequestParam int page,
             @RequestParam int size,
             @RequestParam String field) {
 
-        Page<Student> students =
-                service.getStudentsWithPaginationAndSorting(
-                        page,
-                        size,
-                        field
-                );
+        Page<StudentDTO> students =
+                service.getStudentsWithPaginationAndSorting(page, size, field);
 
         return ResponseEntity.ok(
-                new ApiResponse<>(
-                        true,
-                        "Students retrieved with pagination and sorting",
-                        students
-                )
-        );
+                new ApiResponse<>(true, "Students retrieved with pagination and sorting", students));
     }
-
    
     // UPDATE STUDENT
     

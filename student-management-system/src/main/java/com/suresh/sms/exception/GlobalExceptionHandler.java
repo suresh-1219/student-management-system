@@ -29,7 +29,17 @@ public class GlobalExceptionHandler {
                 .body(body);
     }
 
+    @ExceptionHandler(InvalidCredentialsException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidCredentials(
+            InvalidCredentialsException ex) {
 
+        Map<String, Object> body = new HashMap<>();
+        body.put("message", ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(body);
+    }
     // VALIDATION ERROR
   
 
@@ -85,24 +95,5 @@ public class GlobalExceptionHandler {
                 .status(HttpStatus.CONFLICT)
                 .body(body);
     }
-
-
-    // RUNTIME EXCEPTION
-
-
-    @ExceptionHandler(RuntimeException.class)
-    public ResponseEntity<Map<String, Object>> handleRuntimeException(
-            RuntimeException ex) {
-
-        Map<String, Object> body = new HashMap<>();
-
-        body.put(
-                "message",
-                ex.getMessage()
-        );
-
-        return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(body);
-    }
+   
 }

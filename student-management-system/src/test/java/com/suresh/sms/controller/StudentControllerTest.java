@@ -259,7 +259,7 @@ class StudentControllerTest {
     @Test
     void testGetStudentByName() throws Exception {
 
-        Student student = new Student(
+        StudentDTO student = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
@@ -295,7 +295,7 @@ class StudentControllerTest {
     @Test
     void testGetStudents() throws Exception {
 
-        Student student = new Student(
+        StudentDTO student = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
@@ -303,7 +303,7 @@ class StudentControllerTest {
                 50000.0
         );
 
-        Page<Student> page =
+        Page<StudentDTO> page =
                 new PageImpl<>(
                         Arrays.asList(student),
                         PageRequest.of(0, 10),
@@ -341,7 +341,7 @@ class StudentControllerTest {
     @Test
     void testSortStudents() throws Exception {
 
-        Student student = new Student(
+        StudentDTO student = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
@@ -378,7 +378,7 @@ class StudentControllerTest {
     @Test
     void testSortStudentsDesc() throws Exception {
 
-        Student student = new Student(
+        StudentDTO student = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
@@ -416,7 +416,7 @@ class StudentControllerTest {
     void testGetStudentsWithPaginationAndSorting()
             throws Exception {
 
-        Student student = new Student(
+        StudentDTO student = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
@@ -424,7 +424,7 @@ class StudentControllerTest {
                 50000.0
         );
 
-        Page<Student> page =
+        Page<StudentDTO> page =
                 new PageImpl<>(
                         Arrays.asList(student),
                         PageRequest.of(0, 10),

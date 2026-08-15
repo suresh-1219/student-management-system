@@ -32,14 +32,6 @@ public class StudentService {
                 .map(this::convertToDTO)
                 .collect(Collectors.toList());
     }
-
-    public List<Student> sortStudents(String field) {
-        return repository.findAll(Sort.by(Sort.Direction.ASC, field));
-    }
-    
-    public List<Student> sortStudentsDesc(String field) {
-        return repository.findAll(Sort.by(Sort.Direction.DESC, field));
-    }
     
     public StudentDTO getStudentById(Long id) {
 
@@ -50,18 +42,41 @@ public class StudentService {
         return convertToDTO(student);
     }
 
-    public Page<Student> getStudents(int page, int size) {
+    public List<StudentDTO> sortStudents(String field) {
+        return repository.findAll(Sort.by(Sort.Direction.ASC, field))
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<StudentDTO> sortStudentsDesc(String field) {
+        return repository.findAll(Sort.by(Sort.Direction.DESC, field))
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public List<StudentDTO> getStudentByName(String name) {
+        return repository.findByName(name)
+                .stream()
+                .map(this::convertToDTO)
+                .collect(Collectors.toList());
+    }
+
+    public Page<StudentDTO> getStudents(int page, int size) {
 
         Pageable pageable = PageRequest.of(page, size);
 
-        return repository.findAll(pageable);
-    } 
-    
-    public Page<Student> getStudentsWithPaginationAndSorting(int page, int size, String field) {
+        return repository.findAll(pageable)
+                .map(this::convertToDTO);
+    }
+
+    public Page<StudentDTO> getStudentsWithPaginationAndSorting(int page, int size, String field) {
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(field));
 
-        return repository.findAll(pageable);
+        return repository.findAll(pageable)
+                .map(this::convertToDTO);
     }
     
     public StudentDTO saveStudent(StudentDTO dto) {
@@ -97,9 +112,6 @@ public class StudentService {
         repository.delete(existing);
     }
     
-    public List<Student> getStudentByName(String name) {
-        return repository.findByName(name);
-    }
     private StudentDTO convertToDTO(Student student) {
         return modelMapper.map(student, StudentDTO.class);
     }
