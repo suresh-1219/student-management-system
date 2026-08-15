@@ -68,7 +68,7 @@ MySQL Database
 
 ### Architecture Diagram
 
-student-management-system/docs/student-management-systemdocsarchitecture.png
+![Student Management System Architecture](docs/student-management-systemdocsarchitecture.png)
 
 ## 🔐 Authentication
 
