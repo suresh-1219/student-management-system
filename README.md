@@ -68,8 +68,7 @@ MySQL Database
 
 ### Architecture Diagram
 
-![Student Management System Architecture](docs/student-management-systemdocsarchitecture.png)
-
+![Student Management System Architecture](student-management-system/docs/student-management-systemdocsarchitecture.png)
 ## 🔐 Authentication
 
 All endpoints except `/auth/login`, `/users/register`, and Swagger routes require a valid JWT.
