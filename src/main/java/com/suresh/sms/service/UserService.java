@@ -5,7 +5,9 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import com.suresh.sms.dto.LoginRequest;
+import com.suresh.sms.dto.RegisterRequest;
 import com.suresh.sms.dto.UserResponseDTO;
+import com.suresh.sms.entity.Role;
 import com.suresh.sms.entity.User;
 import com.suresh.sms.jwt.JwtUtil;
 import com.suresh.sms.repository.UserRepository;
@@ -25,19 +27,33 @@ public class UserService {
 
 
     
-    // USER REGISTRATION
-    
-    public UserResponseDTO register(User user) {
+    // USER REGISTRATION (public endpoint - always creates a plain USER)
 
-        if (userRepository.existsByUsername(user.getUsername())) {
+    public UserResponseDTO register(RegisterRequest request) {
+
+        return createUser(request, Role.USER);
+    }
+
+
+    // INTERNAL USER CREATION
+    // Not reachable from any controller. Used by public registration (USER)
+    // and by the startup AdminSeeder (ADMIN).
+
+    public UserResponseDTO createUser(RegisterRequest request, Role role) {
+
+        if (userRepository.existsByUsername(request.username())) {
             throw new DuplicateUserException("Username already exists");
         }
 
-        if (userRepository.existsByEmail(user.getEmail())) {
+        if (userRepository.existsByEmail(request.email())) {
             throw new DuplicateUserException("Email already exists");
         }
 
-        user.setPassword(passwordEncoder.encode(user.getPassword()));
+        User user = new User();
+        user.setUsername(request.username());
+        user.setEmail(request.email());
+        user.setPassword(passwordEncoder.encode(request.password()));
+        user.setRole(role);
 
         User savedUser = userRepository.save(user);
 
@@ -45,11 +61,17 @@ public class UserService {
                 savedUser.getId(),
                 savedUser.getUsername(),
                 savedUser.getEmail(),
-                savedUser.getRole()
+                savedUser.getRole().name()
         );
     }
 
-    
+
+    public boolean usernameExists(String username) {
+
+        return userRepository.existsByUsername(username);
+    }
+
+
     // USER LOGIN
     
     public String login(LoginRequest request) {
@@ -62,7 +84,7 @@ public class UserService {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        return jwtUtil.generateToken(user.getUsername(), user.getRole());
+        return jwtUtil.generateToken(user.getUsername(), user.getRole().name());
     }
 
 

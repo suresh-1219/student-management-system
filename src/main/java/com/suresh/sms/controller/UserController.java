@@ -3,8 +3,8 @@ package com.suresh.sms.controller;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 
+import com.suresh.sms.dto.RegisterRequest;
 import com.suresh.sms.dto.UserResponseDTO;
-import com.suresh.sms.entity.User;
 import com.suresh.sms.service.UserService;
 
 import jakarta.validation.Valid;
@@ -17,8 +17,8 @@ public class UserController {
     private UserService userService;
 
     @PostMapping("/register")
-    public UserResponseDTO register(@Valid @RequestBody User user) {
+    public UserResponseDTO register(@Valid @RequestBody RegisterRequest request) {
 
-        return userService.register(user);
+        return userService.register(request);
     }
 }

@@ -73,7 +73,7 @@ MySQL Database
 
 All endpoints except `/auth/login`, `/users/register`, and Swagger routes require a valid JWT.
 
-1. Register a user via `POST /users/register`
+1. Register a user via `POST /users/register` (body: `username`, `email`, `password`). Public registration **always creates a `USER`**; any `role` sent by the client is ignored.
 2. Log in via `POST /auth/login` to receive a JWT
 3. Pass the token on subsequent requests as a header:
 
@@ -93,7 +93,7 @@ Authorization: Bearer <token>
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/users/register` | Public | Register a new user |
+| POST | `/users/register` | Public | Register a new user (always role `USER`) |
 
 ### Students
 
@@ -129,7 +129,14 @@ The application reads the following from the environment:
 | `DB_URL` | MySQL JDBC URL (defaults to `jdbc:mysql://localhost:3307/student_db`) |
 | `DB_USERNAME` | MySQL username (defaults to `root`) |
 | `DB_PASSWORD` | MySQL password |
-| `JWT_SECRET` | Secret key used to sign JWTs |
+| `JWT_SECRET` | Secret key used to sign JWTs (at least 32 characters) |
+| `ADMIN_PASSWORD` | *Optional.* If set, an `ADMIN` account is created on startup (skipped if it already exists) |
+| `ADMIN_USERNAME` | Admin username (defaults to `admin`) |
+| `ADMIN_EMAIL` | Admin email (defaults to `admin@example.com`) |
+
+### Creating the first admin
+
+Admins cannot be created through the public API. Set `ADMIN_PASSWORD` (and optionally `ADMIN_USERNAME` / `ADMIN_EMAIL`) before starting the app and it will seed the account on startup. Then log in via `/auth/login` to get an admin token.
 
 ### Run locally
 

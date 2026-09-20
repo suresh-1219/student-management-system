@@ -27,7 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
-import com.suresh.sms.entity.User;
+import com.suresh.sms.dto.RegisterRequest;
 import com.suresh.sms.repository.StudentRepository;
 import com.suresh.sms.service.UserService;
 
@@ -78,15 +78,11 @@ class ExceptionIntegrationTest {
     @Test
     void testDuplicateUsername() throws Exception {
 
-        User user = new User();
-
-        user.setUsername("sureshduplicate");
-        user.setEmail("unique@gmail.com");
-        user.setPassword("password");
-        user.setRole("USER");
+        RegisterRequest user = new RegisterRequest(
+                "sureshduplicate", "unique@gmail.com", "password123");
 
 
-        when(userService.register(any(User.class)))
+        when(userService.register(any(RegisterRequest.class)))
                 .thenThrow(
                         new DuplicateUserException(
                                 "Username already exists"
@@ -118,15 +114,11 @@ class ExceptionIntegrationTest {
     @Test
     void testDuplicateEmail() throws Exception {
 
-        User user = new User();
-
-        user.setUsername("uniqueusername");
-        user.setEmail("duplicate@gmail.com");
-        user.setPassword("password");
-        user.setRole("USER");
+        RegisterRequest user = new RegisterRequest(
+                "uniqueusername", "duplicate@gmail.com", "password123");
 
 
-        when(userService.register(any(User.class)))
+        when(userService.register(any(RegisterRequest.class)))
                 .thenThrow(
                         new DuplicateUserException(
                                 "Email already exists"
