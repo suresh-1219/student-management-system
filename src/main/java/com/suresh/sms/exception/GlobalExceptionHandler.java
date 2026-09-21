@@ -79,6 +79,13 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(DuplicateStudentException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateStudentException(
+            DuplicateStudentException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(
             InvalidRequestException ex) {

@@ -277,4 +277,20 @@ class GlobalExceptionHandlerTest {
         assertEquals("missing", body.get("message"));
         assertTrue(body.containsKey("timestamp"));
     }
+
+    // DUPLICATE STUDENT E-MAIL -> 409
+
+    @Test
+    void testDuplicateStudentException() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleDuplicateStudentException(
+                        new DuplicateStudentException(
+                                "A student with this email already exists"));
+
+        assertEquals(409, response.getStatusCode().value());
+        assertEquals(
+                "A student with this email already exists",
+                response.getBody().get("message"));
+    }
 }

@@ -1,5 +1,8 @@
 package com.suresh.sms.controller;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -9,14 +12,25 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.suresh.sms.dto.StudentDTO;
+import com.suresh.sms.service.StudentService;
 
+/**
+ * Checks request validation only. The service is mocked on purpose: this test
+ * used to call the REAL service, which inserted a new "Suresh" row into the
+ * real database on every run (and now fails with 409 because student e-mails
+ * are unique).
+ */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
 class StudentValidationTest {
+
+    @MockitoBean
+    private StudentService studentService;
 
     @Autowired
     private MockMvc mockMvc;
@@ -200,6 +214,9 @@ class StudentValidationTest {
                         50000.0
                 );
 
+        when(studentService.saveStudent(any(StudentDTO.class)))
+                .thenReturn(dto);
+
         mockMvc.perform(
                 post("/students")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -208,5 +225,7 @@ class StudentValidationTest {
                         )
         )
         .andExpect(status().isOk());
+
+        verify(studentService).saveStudent(any(StudentDTO.class));
     }
 }

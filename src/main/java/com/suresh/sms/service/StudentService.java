@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.exception.DuplicateStudentException;
 import com.suresh.sms.exception.InvalidRequestException;
 import com.suresh.sms.exception.StudentNotFoundException;
 import com.suresh.sms.repository.StudentRepository;
@@ -95,6 +96,11 @@ public class StudentService {
     
     public StudentDTO saveStudent(StudentDTO dto) {
 
+        if (repository.existsByEmail(dto.getEmail())) {
+            throw new DuplicateStudentException(
+                    "A student with this email already exists");
+        }
+
         Student student = convertToEntity(dto);
 
         Student saved = repository.save(student);
@@ -107,6 +113,11 @@ public class StudentService {
         Student existing = repository.findById(id)
                 .orElseThrow(() ->
                         new StudentNotFoundException("Student not found with id : " + id));
+
+        if (repository.existsByEmailAndIdNot(dto.getEmail(), id)) {
+            throw new DuplicateStudentException(
+                    "A student with this email already exists");
+        }
 
         existing.setName(dto.getName());
         existing.setEmail(dto.getEmail());

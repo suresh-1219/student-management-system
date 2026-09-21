@@ -10,4 +10,9 @@ public interface StudentRepository extends JpaRepository<Student, Long> {
 
     List<Student> findByName(String name);
 
+    boolean existsByEmail(String email);
+
+    /** True if a DIFFERENT student (other id) already uses this e-mail. */
+    boolean existsByEmailAndIdNot(String email, Long id);
+
 }

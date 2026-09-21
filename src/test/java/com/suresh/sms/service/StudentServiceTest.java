@@ -25,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.suresh.sms.dto.StudentDTO;
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.exception.DuplicateStudentException;
 import com.suresh.sms.exception.InvalidRequestException;
 import com.suresh.sms.exception.StudentNotFoundException;
 import com.suresh.sms.repository.StudentRepository;
@@ -627,5 +628,61 @@ class StudentServiceTest {
 
         assertEquals(0, studentService.getStudents(0, 1).getTotalElements());
         assertEquals(0, studentService.getStudents(0, 100).getTotalElements());
+    }
+
+    // DUPLICATE STUDENT E-MAIL
+
+    private StudentDTO dtoWithEmail(String email) {
+
+        StudentDTO dto = new StudentDTO();
+        dto.setName("Suresh");
+        dto.setEmail(email);
+        dto.setCourse("MCA");
+        dto.setFee(50000.0);
+
+        return dto;
+    }
+
+    @Test
+    void testSaveStudentRejectsDuplicateEmail() {
+
+        when(repository.existsByEmail("taken@gmail.com")).thenReturn(true);
+
+        DuplicateStudentException ex = assertThrows(
+                DuplicateStudentException.class,
+                () -> studentService.saveStudent(dtoWithEmail("taken@gmail.com")));
+
+        assertEquals("A student with this email already exists", ex.getMessage());
+
+        verify(repository, org.mockito.Mockito.never()).save(any(Student.class));
+    }
+
+    @Test
+    void testUpdateStudentRejectsEmailOfAnotherStudent() {
+
+        Student existing = new Student(1L, "Old", "old@gmail.com", "MCA", 1000.0);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.existsByEmailAndIdNot("taken@gmail.com", 1L)).thenReturn(true);
+
+        assertThrows(
+                DuplicateStudentException.class,
+                () -> studentService.updateStudent(1L, dtoWithEmail("taken@gmail.com")));
+
+        verify(repository, org.mockito.Mockito.never()).save(any(Student.class));
+    }
+
+    @Test
+    void testUpdateStudentMayKeepItsOwnEmail() {
+
+        Student existing = new Student(1L, "Old", "same@gmail.com", "MCA", 1000.0);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.existsByEmailAndIdNot("same@gmail.com", 1L)).thenReturn(false);
+        when(repository.save(existing)).thenReturn(existing);
+
+        studentService.updateStudent(1L, dtoWithEmail("same@gmail.com"));
+
+        verify(repository).save(existing);
     }
 }

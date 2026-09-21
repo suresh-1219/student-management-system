@@ -36,6 +36,7 @@ The Student Management System is a backend application designed to manage studen
 | Spring Data JPA | Data Access |
 | Hibernate | ORM |
 | MySQL 8 | Database |
+| Flyway | Versioned database migrations |
 | JWT (jjwt) | Authentication |
 | Spring Security | Authorization |
 | ModelMapper | Entity-DTO conversion |
@@ -112,6 +113,8 @@ Authorization: Bearer <token>
 
 **Limits:** `size` must be between 1 and 100 and `page` must not be negative. Sorting is allowed only by `id`, `name`, `email`, `course` or `fee`; any other field returns `400`.
 
+**Unique e-mail:** a student's e-mail must be unique. Creating a student, or changing an e-mail, to one that another student already uses returns `409 Conflict`.
+
 ### Error responses
 
 Every error (including 401 and 403) uses the same JSON shape:
@@ -155,6 +158,19 @@ The application reads the following from the environment:
 ### Creating the first admin
 
 Admins cannot be created through the public API. Set `ADMIN_PASSWORD` (and optionally `ADMIN_USERNAME` / `ADMIN_EMAIL`) before starting the app and it will seed the account on startup. Then log in via `/auth/login` to get an admin token.
+
+### Database migrations (Flyway)
+
+The database schema is managed by [Flyway](https://flywaydb.org/), not by Hibernate (`spring.jpa.hibernate.ddl-auto=none`). Migration scripts live in `src/main/resources/db/migration` and run automatically on startup:
+
+| Script | What it does |
+|---|---|
+| `V1__baseline_schema.sql` | Creates `users` and `students` on a brand-new database |
+| `V2__student_email_unique_and_audit.sql` | Unique student e-mail, `created_at` / `updated_at` timestamps, `version` column for optimistic locking |
+
+- **Existing database** (created before Flyway was added): Flyway records it as already being at version 1 and applies only V2 onwards.
+- **Never edit a migration that has already been applied.** Add a new file instead (`V3__...sql`, `V4__...sql`, ...).
+- If V2 fails with `Duplicate entry ... for key 'uk_students_email'`, two students share an e-mail. Remove or change the duplicate, then start the app again; the failed `ALTER TABLE` changes nothing.
 
 ### Run locally
 

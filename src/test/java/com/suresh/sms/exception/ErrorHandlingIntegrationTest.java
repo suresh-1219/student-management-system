@@ -2,6 +2,7 @@ package com.suresh.sms.exception;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -19,6 +20,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import com.suresh.sms.dto.StudentDTO;
 import com.suresh.sms.service.StudentService;
 
 /**
@@ -101,5 +103,24 @@ class ErrorHandlingIntegrationTest {
         .andExpect(status().isInternalServerError())
         .andExpect(jsonPath("$.message").value("An unexpected error occurred"))
         .andExpect(content().string(not(containsString("secret-internal-detail"))));
+    }
+
+    @Test
+    void duplicateStudentEmailReturns409() throws Exception {
+
+        when(studentService.saveStudent(any(StudentDTO.class)))
+                .thenThrow(new DuplicateStudentException(
+                        "A student with this email already exists"));
+
+        mockMvc.perform(
+                post("/students")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"name\":\"Suresh\",\"email\":\"suresh@gmail.com\","
+                                + "\"course\":\"MCA\",\"fee\":50000}")
+        )
+        .andExpect(status().isConflict())
+        .andExpect(jsonPath("$.status").value(409))
+        .andExpect(jsonPath("$.message")
+                .value("A student with this email already exists"));
     }
 }
