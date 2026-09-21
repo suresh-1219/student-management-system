@@ -6,6 +6,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.exception.InvalidRequestException;
 import com.suresh.sms.exception.StudentNotFoundException;
 import com.suresh.sms.repository.StudentRepository;
 import com.suresh.sms.dto.StudentDTO;
@@ -18,7 +19,13 @@ import org.springframework.data.domain.Sort;
 
 @Service
 public class StudentService {
-	
+
+    /** Fields a client may sort by. Anything else is rejected with HTTP 400. */
+    private static final List<String> SORTABLE_FIELDS =
+            List.of("id", "name", "email", "course", "fee");
+
+    static final int MAX_PAGE_SIZE = 100;
+
 	@Autowired
 	private ModelMapper modelMapper;
 
@@ -43,6 +50,7 @@ public class StudentService {
     }
 
     public List<StudentDTO> sortStudents(String field) {
+        validateSortField(field);
         return repository.findAll(Sort.by(Sort.Direction.ASC, field))
                 .stream()
                 .map(this::convertToDTO)
@@ -50,6 +58,7 @@ public class StudentService {
     }
 
     public List<StudentDTO> sortStudentsDesc(String field) {
+        validateSortField(field);
         return repository.findAll(Sort.by(Sort.Direction.DESC, field))
                 .stream()
                 .map(this::convertToDTO)
@@ -65,6 +74,8 @@ public class StudentService {
 
     public Page<StudentDTO> getStudents(int page, int size) {
 
+        validatePaging(page, size);
+
         Pageable pageable = PageRequest.of(page, size);
 
         return repository.findAll(pageable)
@@ -72,6 +83,9 @@ public class StudentService {
     }
 
     public Page<StudentDTO> getStudentsWithPaginationAndSorting(int page, int size, String field) {
+
+        validatePaging(page, size);
+        validateSortField(field);
 
         Pageable pageable = PageRequest.of(page, size, Sort.by(field));
 
@@ -112,6 +126,27 @@ public class StudentService {
         repository.delete(existing);
     }
     
+    private void validateSortField(String field) {
+
+        if (field == null || !SORTABLE_FIELDS.contains(field)) {
+            throw new InvalidRequestException(
+                    "Invalid sort field. Allowed fields: "
+                            + String.join(", ", SORTABLE_FIELDS));
+        }
+    }
+
+    private void validatePaging(int page, int size) {
+
+        if (page < 0) {
+            throw new InvalidRequestException("Page index must not be negative");
+        }
+
+        if (size < 1 || size > MAX_PAGE_SIZE) {
+            throw new InvalidRequestException(
+                    "Page size must be between 1 and " + MAX_PAGE_SIZE);
+        }
+    }
+
     private StudentDTO convertToDTO(Student student) {
         return modelMapper.map(student, StudentDTO.class);
     }

@@ -110,6 +110,24 @@ Authorization: Bearer <token>
 | PUT | `/students/{id}` | ADMIN | Update a student |
 | DELETE | `/students/{id}` | ADMIN | Delete a student |
 
+**Limits:** `size` must be between 1 and 100 and `page` must not be negative. Sorting is allowed only by `id`, `name`, `email`, `course` or `fee`; any other field returns `400`.
+
+### Error responses
+
+Every error (including 401 and 403) uses the same JSON shape:
+
+```json
+{
+  "timestamp": "2026-09-21T10:15:30Z",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "Validation failed",
+  "errors": { "fee": "Fee cannot be negative" }
+}
+```
+
+`errors` is present only for validation failures. Unexpected server errors return a generic `500` message; details are logged on the server and never sent to the client.
+
 Full interactive API documentation is available via Swagger once the app is running, at `/swagger-ui.html`.
 
 ## ⚙️ Getting Started

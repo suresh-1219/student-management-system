@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.util.Arrays;
@@ -24,6 +25,7 @@ import org.springframework.data.domain.Pageable;
 
 import com.suresh.sms.dto.StudentDTO;
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.exception.InvalidRequestException;
 import com.suresh.sms.exception.StudentNotFoundException;
 import com.suresh.sms.repository.StudentRepository;
 
@@ -550,5 +552,80 @@ class StudentServiceTest {
                 "Suresh",
                 result.getContent().get(0).getName()
         );
+    }
+
+    // SORT FIELD WHITELIST
+
+    @Test
+    void testSortRejectsUnknownField() {
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.sortStudents("password"));
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.sortStudentsDesc("nonexistent"));
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.sortStudents(null));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testSortAcceptsEveryAllowedField() {
+
+        when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
+                .thenReturn(List.of());
+
+        for (String field : List.of("id", "name", "email", "course", "fee")) {
+            assertEquals(0, studentService.sortStudents(field).size());
+            assertEquals(0, studentService.sortStudentsDesc(field).size());
+        }
+    }
+
+    @Test
+    void testPageSortRejectsUnknownField() {
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.getStudentsWithPaginationAndSorting(0, 5, "bogus"));
+
+        verifyNoInteractions(repository);
+    }
+
+
+    // PAGE / SIZE LIMITS
+
+    @Test
+    void testPagingRejectsNegativePage() {
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.getStudents(-1, 10));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testPagingRejectsSizeOutOfRange() {
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.getStudents(0, 0));
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.getStudents(0, 101));
+
+        assertThrows(InvalidRequestException.class,
+                () -> studentService.getStudentsWithPaginationAndSorting(0, 1_000_000, "name"));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testPagingAcceptsBoundaryValues() {
+
+        when(repository.findAll(any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        assertEquals(0, studentService.getStudents(0, 1).getTotalElements());
+        assertEquals(0, studentService.getStudents(0, 100).getTotalElements());
     }
 }

@@ -7,6 +7,8 @@ import com.suresh.sms.dto.LoginRequest;
 import com.suresh.sms.dto.LoginResponse;
 import com.suresh.sms.service.UserService;
 
+import jakarta.validation.Valid;
+
 @RestController
 @RequestMapping("/auth")
 public class AuthController {
@@ -15,7 +17,7 @@ public class AuthController {
     private UserService userService;
 
     @PostMapping("/login")
-    public LoginResponse login(@RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
 
         String token = userService.login(request);
 

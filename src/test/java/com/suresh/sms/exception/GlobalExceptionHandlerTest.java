@@ -10,10 +10,16 @@ import java.util.List;
 import java.util.Map;
 
 import org.junit.jupiter.api.Test;
+import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.HttpInputMessage;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.FieldError;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
 
 class GlobalExceptionHandlerTest {
@@ -145,5 +151,130 @@ class GlobalExceptionHandlerTest {
                 "Invalid username or password",
                 response.getBody().get("message")
         );
+    }
+
+    // INVALID REQUEST (bad sort field / page size) -> 400
+
+    @Test
+    void testInvalidRequestException() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleInvalidRequest(
+                        new InvalidRequestException("Invalid sort field"));
+
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals("Invalid sort field", response.getBody().get("message"));
+    }
+
+
+    // MALFORMED JSON -> 400
+
+    @Test
+    void testUnreadableBody() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleUnreadableBody(
+                        new HttpMessageNotReadableException(
+                                "JSON parse error: internal detail",
+                                mock(HttpInputMessage.class)));
+
+        assertEquals(400, response.getStatusCode().value());
+        // internal parser detail must not be echoed to the client
+        assertEquals(
+                "Malformed or unreadable request body",
+                response.getBody().get("message"));
+    }
+
+
+    // WRONG TYPE IN URL (e.g. /students/abc) -> 400
+
+    @Test
+    void testTypeMismatch() {
+
+        MethodArgumentTypeMismatchException ex =
+                new MethodArgumentTypeMismatchException(
+                        "abc", Long.class, "id", null, null);
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleTypeMismatch(ex);
+
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals(
+                "Invalid value for parameter 'id'",
+                response.getBody().get("message"));
+    }
+
+
+    // DATABASE CONSTRAINT -> 409
+
+    @Test
+    void testDataIntegrityViolation() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleDataIntegrity(
+                        new DataIntegrityViolationException(
+                                "Duplicate entry 'x' for key 'users.username'"));
+
+        assertEquals(409, response.getStatusCode().value());
+        assertEquals(
+                "Request conflicts with existing data",
+                response.getBody().get("message"));
+    }
+
+
+    // CATCH-ALL: unknown errors -> 500 with a generic message
+
+    @Test
+    void testUnexpectedExceptionDoesNotLeakDetails() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleUnexpected(
+                        new RuntimeException("jdbc:mysql://secret-host password=hunter2"));
+
+        assertEquals(500, response.getStatusCode().value());
+        assertEquals(
+                "An unexpected error occurred",
+                response.getBody().get("message"));
+        assertTrue(
+                !response.getBody().toString().contains("hunter2"));
+    }
+
+
+    // CATCH-ALL keeps the status of Spring MVC's own exceptions
+
+    @Test
+    void testSpringMvcMissingParameterKeeps400() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleUnexpected(
+                        new MissingServletRequestParameterException("page", "int"));
+
+        assertEquals(400, response.getStatusCode().value());
+    }
+
+    @Test
+    void testSpringMvcMethodNotSupportedKeeps405() {
+
+        ResponseEntity<Map<String, Object>> response =
+                handler.handleUnexpected(
+                        new HttpRequestMethodNotSupportedException("PATCH"));
+
+        assertEquals(405, response.getStatusCode().value());
+    }
+
+
+    // EVERY ERROR HAS THE SAME SHAPE
+
+    @Test
+    void testErrorBodyShape() {
+
+        Map<String, Object> body =
+                handler.handleStudentNotFound(
+                        new StudentNotFoundException("missing")).getBody();
+
+        assertEquals(404, body.get("status"));
+        assertEquals("Not Found", body.get("error"));
+        assertEquals("missing", body.get("message"));
+        assertTrue(body.containsKey("timestamp"));
     }
 }

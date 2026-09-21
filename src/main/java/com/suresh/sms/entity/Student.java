@@ -8,7 +8,7 @@ import jakarta.persistence.Table;
 
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.Positive;
+import jakarta.validation.constraints.PositiveOrZero;
 
 @Entity
 @Table(name = "students")
@@ -29,7 +29,7 @@ public class Student {
     @NotBlank(message = "Course is required")
     private String course;
 
-    @Positive(message = "Fee must be greater than zero")
+    @PositiveOrZero(message = "Fee cannot be negative")
     private Double fee;
 
     public Student() {

@@ -7,6 +7,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import org.junit.jupiter.api.Test;
@@ -177,5 +179,32 @@ class SecurityConfigTest {
                 delete("/students/1")
         )
         .andExpect(status().isUnauthorized());
+    }
+
+    // 401 AND 403 RETURN A JSON BODY
+
+    @Test
+    void testUnauthorizedHasJsonBody() throws Exception {
+
+        mockMvc.perform(get("/students"))
+        .andExpect(status().isUnauthorized())
+        .andExpect(content().contentTypeCompatibleWith("application/json"))
+        .andExpect(jsonPath("$.status").value(401))
+        .andExpect(jsonPath("$.error").value("Unauthorized"))
+        .andExpect(jsonPath("$.message").exists());
+    }
+
+    @Test
+    void testForbiddenHasJsonBody() throws Exception {
+
+        mockMvc.perform(
+                post("/students")
+                        .with(user("suresh3").roles("USER"))
+        )
+        .andExpect(status().isForbidden())
+        .andExpect(content().contentTypeCompatibleWith("application/json"))
+        .andExpect(jsonPath("$.status").value(403))
+        .andExpect(jsonPath("$.error").value("Forbidden"))
+        .andExpect(jsonPath("$.message").exists());
     }
 }

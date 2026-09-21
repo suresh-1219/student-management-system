@@ -1,11 +1,15 @@
 package com.suresh.sms.config;
 
+import java.io.IOException;
+import java.time.Instant;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -14,10 +18,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
 import org.springframework.security.web.SecurityFilterChain;
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.suresh.sms.jwt.JwtFilter;
+
+import jakarta.servlet.http.HttpServletResponse;
 
 @Configuration
 public class SecurityConfig {
@@ -104,23 +109,27 @@ public class SecurityConfig {
 
             
             // EXCEPTION HANDLING
-           
+
             .exceptionHandling(exception -> exception
 
-                // No authentication -> 401
+                // No / invalid token -> 401 (JSON body)
                 .authenticationEntryPoint(
-                    new HttpStatusEntryPoint(
-                        HttpStatus.UNAUTHORIZED
-                    )
+                    (request, response, authException) ->
+                        writeError(
+                            response,
+                            HttpStatus.UNAUTHORIZED,
+                            "Authentication required: missing or invalid token"
+                        )
                 )
 
-                // Authenticated but wrong role -> 403
+                // Authenticated but wrong role -> 403 (JSON body)
                 .accessDeniedHandler(
-                    (request, response, accessDeniedException) -> {
-                        response.setStatus(
-                            HttpStatus.FORBIDDEN.value()
-                        );
-                    }
+                    (request, response, accessDeniedException) ->
+                        writeError(
+                            response,
+                            HttpStatus.FORBIDDEN,
+                            "You do not have permission to perform this action"
+                        )
                 )
             );
 
@@ -137,6 +146,27 @@ public class SecurityConfig {
 
 
    
+    // JSON ERROR BODY (same shape as GlobalExceptionHandler)
+    // Messages are fixed strings, so no escaping of user input is needed.
+
+    private static void writeError(
+            HttpServletResponse response,
+            HttpStatus status,
+            String message) throws IOException {
+
+        response.setStatus(status.value());
+        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
+        response.setCharacterEncoding("UTF-8");
+
+        response.getWriter().write(String.format(
+                "{\"timestamp\":\"%s\",\"status\":%d,\"error\":\"%s\",\"message\":\"%s\"}",
+                Instant.now(),
+                status.value(),
+                status.getReasonPhrase(),
+                message));
+    }
+
+
     // PASSWORD ENCODER
     
     @Bean

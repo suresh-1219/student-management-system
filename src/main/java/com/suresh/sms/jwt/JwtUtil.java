@@ -4,6 +4,7 @@ import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 
+import java.nio.charset.StandardCharsets;
 import java.security.Key;
 import java.util.Date;
 
@@ -24,7 +25,7 @@ public class JwtUtil {
             @Value("${jwt.secret}") String secret) {
 
         this.key = Keys.hmacShaKeyFor(
-                secret.getBytes()
+                secret.getBytes(StandardCharsets.UTF_8)
         );
     }
 

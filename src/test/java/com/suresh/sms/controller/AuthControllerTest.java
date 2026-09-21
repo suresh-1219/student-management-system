@@ -1,6 +1,7 @@
 package com.suresh.sms.controller;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -67,5 +68,36 @@ class AuthControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.token")
                 .value("test-token"));
+    }
+
+    // LOGIN VALIDATION
+
+    @Test
+    void testLoginRejectsBlankUsername() throws Exception {
+
+        mockMvc.perform(
+                post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new LoginRequest("  ", "password")))
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors.username").exists());
+
+        verifyNoInteractions(userService);
+    }
+
+    @Test
+    void testLoginRejectsMissingPassword() throws Exception {
+
+        mockMvc.perform(
+                post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"username\":\"suresh\"}")
+        )
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.errors.password").exists());
+
+        verifyNoInteractions(userService);
     }
 }
