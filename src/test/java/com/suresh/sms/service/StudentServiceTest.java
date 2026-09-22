@@ -1,5 +1,6 @@
 package com.suresh.sms.service;
 
+import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -22,7 +23,9 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 
+import com.suresh.sms.dto.PageResponse;
 import com.suresh.sms.dto.StudentDTO;
 import com.suresh.sms.entity.Student;
 import com.suresh.sms.exception.DuplicateStudentException;
@@ -54,21 +57,21 @@ class StudentServiceTest {
         student1.setName("Suresh");
         student1.setEmail("suresh@gmail.com");
         student1.setCourse("MCA");
-        student1.setFee(50000.0);
+        student1.setFee(BigDecimal.valueOf(50000.0));
 
         Student student2 = new Student();
         student2.setId(2L);
         student2.setName("Rahul");
         student2.setEmail("rahul@gmail.com");
         student2.setCourse("B.Tech");
-        student2.setFee(45000.0);
+        student2.setFee(BigDecimal.valueOf(45000.0));
 
         StudentDTO dto1 = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         StudentDTO dto2 = new StudentDTO(
@@ -76,7 +79,7 @@ class StudentServiceTest {
                 "Rahul",
                 "rahul@gmail.com",
                 "B.Tech",
-                45000.0
+                BigDecimal.valueOf(45000.0)
         );
 
         when(repository.findAll())
@@ -110,14 +113,14 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(repository.findById(1L))
@@ -169,7 +172,7 @@ class StudentServiceTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         Student student = new Student();
@@ -177,7 +180,7 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         Student savedStudent = new Student();
 
@@ -185,14 +188,14 @@ class StudentServiceTest {
         savedStudent.setName("Suresh");
         savedStudent.setEmail("suresh@gmail.com");
         savedStudent.setCourse("MCA");
-        savedStudent.setFee(50000.0);
+        savedStudent.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO resultDTO = new StudentDTO(
                 10L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(modelMapper.map(dto, Student.class))
@@ -211,7 +214,7 @@ class StudentServiceTest {
         assertEquals(10L, result.getId());
         assertEquals("Suresh", result.getName());
         assertEquals("MCA", result.getCourse());
-        assertEquals(50000.0, result.getFee());
+        assertEquals(BigDecimal.valueOf(50000.0), result.getFee());
     }
 
 
@@ -227,14 +230,14 @@ class StudentServiceTest {
         existing.setName("Old Name");
         existing.setEmail("old@gmail.com");
         existing.setCourse("BCA");
-        existing.setFee(40000.0);
+        existing.setFee(BigDecimal.valueOf(40000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh Kumar",
                 "sureshkumar@gmail.com",
                 "MCA",
-                55000.0
+                BigDecimal.valueOf(55000.0)
         );
 
         StudentDTO resultDTO = new StudentDTO(
@@ -242,7 +245,7 @@ class StudentServiceTest {
                 "Suresh Kumar",
                 "sureshkumar@gmail.com",
                 "MCA",
-                55000.0
+                BigDecimal.valueOf(55000.0)
         );
 
         when(repository.findById(1L))
@@ -275,7 +278,7 @@ class StudentServiceTest {
         );
 
         assertEquals(
-                55000.0,
+                BigDecimal.valueOf(55000.0),
                 result.getFee()
         );
     }
@@ -292,7 +295,7 @@ class StudentServiceTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(repository.findById(99L))
@@ -323,7 +326,7 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         when(repository.findById(1L))
                 .thenReturn(Optional.of(student));
@@ -368,14 +371,14 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(repository.findByName("Suresh"))
@@ -404,14 +407,14 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
@@ -441,14 +444,14 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(repository.findAll(any(org.springframework.data.domain.Sort.class)))
@@ -478,14 +481,14 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         Page<Student> page =
@@ -521,14 +524,14 @@ class StudentServiceTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         StudentDTO dto = new StudentDTO(
                 1L,
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         Page<Student> page =
@@ -638,7 +641,7 @@ class StudentServiceTest {
         dto.setName("Suresh");
         dto.setEmail(email);
         dto.setCourse("MCA");
-        dto.setFee(50000.0);
+        dto.setFee(BigDecimal.valueOf(50000.0));
 
         return dto;
     }
@@ -660,7 +663,7 @@ class StudentServiceTest {
     @Test
     void testUpdateStudentRejectsEmailOfAnotherStudent() {
 
-        Student existing = new Student(1L, "Old", "old@gmail.com", "MCA", 1000.0);
+        Student existing = new Student(1L, "Old", "old@gmail.com", "MCA", BigDecimal.valueOf(1000.0));
 
         when(repository.findById(1L)).thenReturn(Optional.of(existing));
         when(repository.existsByEmailAndIdNot("taken@gmail.com", 1L)).thenReturn(true);
@@ -675,7 +678,7 @@ class StudentServiceTest {
     @Test
     void testUpdateStudentMayKeepItsOwnEmail() {
 
-        Student existing = new Student(1L, "Old", "same@gmail.com", "MCA", 1000.0);
+        Student existing = new Student(1L, "Old", "same@gmail.com", "MCA", BigDecimal.valueOf(1000.0));
 
         when(repository.findById(1L)).thenReturn(Optional.of(existing));
         when(repository.existsByEmailAndIdNot("same@gmail.com", 1L)).thenReturn(false);
@@ -684,5 +687,90 @@ class StudentServiceTest {
         studentService.updateStudent(1L, dtoWithEmail("same@gmail.com"));
 
         verify(repository).save(existing);
+    }
+
+    // SEARCH
+
+    @Test
+    void testSearchRejectsInvalidDirection() {
+
+        InvalidRequestException ex = assertThrows(
+                InvalidRequestException.class,
+                () -> studentService.searchStudents(
+                        null, null, null, null, 0, 10, "name", "sideways"));
+
+        assertEquals("Invalid direction. Allowed values: asc, desc", ex.getMessage());
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testSearchRejectsMinFeeGreaterThanMaxFee() {
+
+        assertThrows(
+                InvalidRequestException.class,
+                () -> studentService.searchStudents(
+                        null, null,
+                        BigDecimal.valueOf(5000), BigDecimal.valueOf(1000),
+                        0, 10, "id", "asc"));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testSearchRejectsUnknownSortField() {
+
+        assertThrows(
+                InvalidRequestException.class,
+                () -> studentService.searchStudents(
+                        null, null, null, null, 0, 10, "password", "asc"));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testSearchRejectsOversizedPage() {
+
+        assertThrows(
+                InvalidRequestException.class,
+                () -> studentService.searchStudents(
+                        null, null, null, null, 0, 101, "id", "asc"));
+
+        verifyNoInteractions(repository);
+    }
+
+    @Test
+    void testSearchReturnsPageMetadataAndSortsWithIdTieBreaker() {
+
+        Student student = new Student(
+                1L, "Suresh", "suresh@gmail.com", "MCA", BigDecimal.valueOf(50000.0));
+
+        StudentDTO dto = new StudentDTO(
+                1L, "Suresh", "suresh@gmail.com", "MCA", BigDecimal.valueOf(50000.0));
+
+        when(repository.findAll(any(Specification.class), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(student), PageRequest.of(0, 10), 1));
+
+        when(modelMapper.map(student, StudentDTO.class)).thenReturn(dto);
+
+        PageResponse<StudentDTO> result = studentService.searchStudents(
+                "sur", "MCA", BigDecimal.valueOf(1000), null, 0, 10, "fee", "DESC");
+
+        assertEquals(1, result.content().size());
+        assertEquals(1L, result.totalElements());
+        assertEquals(0, result.page());
+        assertEquals(10, result.size());
+
+        org.mockito.ArgumentCaptor<Pageable> captor =
+                org.mockito.ArgumentCaptor.forClass(Pageable.class);
+
+        verify(repository).findAll(any(Specification.class), captor.capture());
+
+        Pageable used = captor.getValue();
+
+        assertEquals(
+                org.springframework.data.domain.Sort.Direction.DESC,
+                used.getSort().getOrderFor("fee").getDirection());
+
+        assertNotNull(used.getSort().getOrderFor("id"));
     }
 }

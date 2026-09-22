@@ -3,10 +3,12 @@ package com.suresh.sms.repository;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import com.suresh.sms.entity.Student;
 
-public interface StudentRepository extends JpaRepository<Student, Long> {
+public interface StudentRepository
+        extends JpaRepository<Student, Long>, JpaSpecificationExecutor<Student> {
 
     List<Student> findByName(String name);
 

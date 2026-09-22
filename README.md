@@ -100,16 +100,36 @@ Authorization: Bearer <token>
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| GET | `/students` | USER, ADMIN | Get all students |
+| GET | `/students/search` | USER, ADMIN | **Search, filter, sort and page students in one call (see below)** |
+| GET | `/students` | USER, ADMIN | Get all students *(deprecated, use `/students/search`)* |
 | GET | `/students/{id}` | USER, ADMIN | Get a student by ID |
-| GET | `/students/search/{name}` | USER, ADMIN | Search students by name |
-| GET | `/students/page?page=&size=` | USER, ADMIN | Get students with pagination |
-| GET | `/students/sort/{field}` | USER, ADMIN | Get students sorted ascending by field |
-| GET | `/students/sortDesc/{field}` | USER, ADMIN | Get students sorted descending by field |
-| GET | `/students/pageSort?page=&size=&field=` | USER, ADMIN | Get students with pagination + sorting |
+| GET | `/students/search/{name}` | USER, ADMIN | Search students by name *(deprecated)* |
+| GET | `/students/page?page=&size=` | USER, ADMIN | Get students with pagination *(deprecated)* |
+| GET | `/students/sort/{field}` | USER, ADMIN | Get students sorted ascending by field *(deprecated)* |
+| GET | `/students/sortDesc/{field}` | USER, ADMIN | Get students sorted descending by field *(deprecated)* |
+| GET | `/students/pageSort?page=&size=&field=` | USER, ADMIN | Get students with pagination + sorting *(deprecated)* |
 | POST | `/students` | ADMIN | Create a student |
 | PUT | `/students/{id}` | ADMIN | Update a student |
 | DELETE | `/students/{id}` | ADMIN | Delete a student |
+
+#### Searching: `GET /students/search`
+
+All parameters are optional and can be combined:
+
+| Parameter | Meaning | Default |
+|---|---|---|
+| `name` | Partial, case-insensitive match on the name | (no filter) |
+| `course` | Exact, case-insensitive match on the course | (no filter) |
+| `minFee`, `maxFee` | Inclusive fee range | (no filter) |
+| `sort` | `id`, `name`, `email`, `course` or `fee` | `id` |
+| `direction` | `asc` or `desc` | `asc` |
+| `page`, `size` | Page number (from 0) and page size (1-100) | `0`, `10` |
+
+Example: `GET /students/search?name=sur&course=MCA&minFee=1000&sort=fee&direction=desc&size=5`
+
+The result is wrapped in the usual `data` field and contains `content`, `page`, `size`, `totalElements`, `totalPages`, `first` and `last`. `minFee` greater than `maxFee` returns `400`.
+
+**Fees** are exact decimals (never floating point): at most 10 digits before and 2 after the decimal point, and never negative.
 
 **Limits:** `size` must be between 1 and 100 and `page` must not be negative. Sorting is allowed only by `id`, `name`, `email`, `course` or `fee`; any other field returns `400`.
 
@@ -167,6 +187,7 @@ The database schema is managed by [Flyway](https://flywaydb.org/), not by Hibern
 |---|---|
 | `V1__baseline_schema.sql` | Creates `users` and `students` on a brand-new database |
 | `V2__student_email_unique_and_audit.sql` | Unique student e-mail, `created_at` / `updated_at` timestamps, `version` column for optimistic locking |
+| `V3__student_fee_decimal.sql` | Fee stored as `DECIMAL(12,2)` instead of `DOUBLE` |
 
 - **Existing database** (created before Flyway was added): Flyway records it as already being at version 1 and applies only V2 onwards.
 - **Never edit a migration that has already been applied.** Add a new file instead (`V3__...sql`, `V4__...sql`, ...).

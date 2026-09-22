@@ -33,7 +33,7 @@ class FlywayMigrationTest {
 
         assertTrue(
                 info.current().getVersion()
-                        .compareTo(MigrationVersion.fromVersion("2")) >= 0,
-                "Schema should be at version 2 or newer");
+                        .compareTo(MigrationVersion.fromVersion("3")) >= 0,
+                "Schema should be at version 3 or newer");
     }
 }

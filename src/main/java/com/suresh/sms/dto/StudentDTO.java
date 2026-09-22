@@ -1,5 +1,8 @@
 package com.suresh.sms.dto;
 
+import java.math.BigDecimal;
+
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;
@@ -21,13 +24,15 @@ public class StudentDTO {
 
     @NotNull(message = "Fee is required")
     @Min(value = 0, message = "Fee cannot be negative")
-    private Double fee;
+    @Digits(integer = 10, fraction = 2,
+            message = "Fee must have at most 10 digits before and 2 after the decimal point")
+    private BigDecimal fee;
 
     public StudentDTO() {
     }
 
     public StudentDTO(Long id, String name, String email,
-                      String course, Double fee) {
+                      String course, BigDecimal fee) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -67,11 +72,11 @@ public class StudentDTO {
         this.course = course;
     }
 
-    public Double getFee() {
+    public BigDecimal getFee() {
         return fee;
     }
 
-    public void setFee(Double fee) {
+    public void setFee(BigDecimal fee) {
         this.fee = fee;
     }
 }

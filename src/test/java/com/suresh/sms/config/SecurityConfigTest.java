@@ -207,4 +207,26 @@ class SecurityConfigTest {
         .andExpect(jsonPath("$.error").value("Forbidden"))
         .andExpect(jsonPath("$.message").exists());
     }
+
+    // SEARCH ENDPOINT: login required, works for USER (real database)
+
+    @Test
+    void testSearchRequiresLogin() throws Exception {
+
+        mockMvc.perform(get("/students/search"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void testUserCanSearchStudents() throws Exception {
+
+        mockMvc.perform(
+                get("/students/search")
+                        .param("size", "5")
+                        .with(user("suresh3").roles("USER"))
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.data.content").isArray())
+        .andExpect(jsonPath("$.data.page").value(0));
+    }
 }

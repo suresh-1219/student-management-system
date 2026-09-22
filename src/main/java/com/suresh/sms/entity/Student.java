@@ -9,10 +9,12 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
+import jakarta.validation.constraints.Digits;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.PositiveOrZero;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 import org.springframework.data.annotation.CreatedDate;
@@ -40,7 +42,10 @@ public class Student {
     private String course;
 
     @PositiveOrZero(message = "Fee cannot be negative")
-    private Double fee;
+    @Digits(integer = 10, fraction = 2,
+            message = "Fee must have at most 10 digits before and 2 after the decimal point")
+    @Column(precision = 12, scale = 2)
+    private BigDecimal fee;
 
     // Optimistic locking: Hibernate increments this on every update, so two
     // people editing the same student cannot silently overwrite each other.
@@ -58,7 +63,7 @@ public class Student {
     public Student() {
     }
 
-    public Student(Long id, String name, String email, String course, Double fee) {
+    public Student(Long id, String name, String email, String course, BigDecimal fee) {
         this.id = id;
         this.name = name;
         this.email = email;
@@ -98,11 +103,11 @@ public class Student {
         this.course = course;
     }
 
-    public Double getFee() {
+    public BigDecimal getFee() {
         return fee;
     }
 
-    public void setFee(Double fee) {
+    public void setFee(BigDecimal fee) {
         this.fee = fee;
     }
 

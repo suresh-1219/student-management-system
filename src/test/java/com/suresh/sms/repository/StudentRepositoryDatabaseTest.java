@@ -1,5 +1,6 @@
 package com.suresh.sms.repository;
 
+import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -7,6 +8,9 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import org.junit.jupiter.api.Test;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -28,8 +32,11 @@ class StudentRepositoryDatabaseTest {
     @Autowired
     private StudentRepository repository;
 
+    @PersistenceContext
+    private EntityManager entityManager;
+
     private Student student(String email) {
-        return new Student(null, "Test Student", email, "MCA", 1000.0);
+        return new Student(null, "Test Student", email, "MCA", BigDecimal.valueOf(1000.0));
     }
 
     @Test
@@ -80,5 +87,21 @@ class StudentRepositoryDatabaseTest {
         // a different id -> the e-mail counts as taken
         assertTrue(repository.existsByEmailAndIdNot(
                 "exists-test@example.com", saved.getId() + 1));
+    }
+
+    @Test
+    void feeKeepsExactDecimalValueInDatabase() {
+
+        Student toSave = student("fee-test@example.com");
+        toSave.setFee(new BigDecimal("1234.56"));
+
+        Student saved = repository.saveAndFlush(toSave);
+
+        // Throw away the cached copy so the next read really comes from MySQL.
+        entityManager.clear();
+
+        Student reloaded = repository.findById(saved.getId()).orElseThrow();
+
+        assertEquals(0, new BigDecimal("1234.56").compareTo(reloaded.getFee()));
     }
 }

@@ -1,5 +1,6 @@
 package com.suresh.sms.entity;
 
+import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import org.junit.jupiter.api.Test;
@@ -15,13 +16,13 @@ class StudentTest {
         student.setName("Suresh");
         student.setEmail("suresh@gmail.com");
         student.setCourse("MCA");
-        student.setFee(50000.0);
+        student.setFee(BigDecimal.valueOf(50000.0));
 
         assertEquals(1L, student.getId());
         assertEquals("Suresh", student.getName());
         assertEquals("suresh@gmail.com", student.getEmail());
         assertEquals("MCA", student.getCourse());
-        assertEquals(50000.0, student.getFee());
+        assertEquals(BigDecimal.valueOf(50000.0), student.getFee());
     }
 
     @Test
@@ -32,13 +33,13 @@ class StudentTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         assertEquals(1L, student.getId());
         assertEquals("Suresh", student.getName());
         assertEquals("suresh@gmail.com", student.getEmail());
         assertEquals("MCA", student.getCourse());
-        assertEquals(50000.0, student.getFee());
+        assertEquals(BigDecimal.valueOf(50000.0), student.getFee());
     }
 }

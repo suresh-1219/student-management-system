@@ -1,5 +1,6 @@
 package com.suresh.sms.controller;
 
+import java.math.BigDecimal;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -52,7 +53,7 @@ class StudentValidationTest {
                         "",
                         "test@gmail.com",
                         "MCA",
-                        50000.0
+                        BigDecimal.valueOf(50000.0)
                 );
 
         mockMvc.perform(
@@ -78,7 +79,7 @@ class StudentValidationTest {
                         "Suresh",
                         "wrong-email",
                         "MCA",
-                        50000.0
+                        BigDecimal.valueOf(50000.0)
                 );
 
         mockMvc.perform(
@@ -105,7 +106,7 @@ class StudentValidationTest {
                         "Suresh",
                         "",
                         "MCA",
-                        50000.0
+                        BigDecimal.valueOf(50000.0)
                 );
 
         mockMvc.perform(
@@ -130,7 +131,7 @@ class StudentValidationTest {
                         "Suresh",
                         "suresh@gmail.com",
                         "",
-                        50000.0
+                        BigDecimal.valueOf(50000.0)
                 );
 
         mockMvc.perform(
@@ -157,7 +158,7 @@ class StudentValidationTest {
                         "Suresh",
                         "suresh@gmail.com",
                         "MCA",
-                        -5000.0
+                        BigDecimal.valueOf(-5000.0)
                 );
 
         mockMvc.perform(
@@ -211,7 +212,7 @@ class StudentValidationTest {
                         "Suresh",
                         "suresh@gmail.com",
                         "MCA",
-                        50000.0
+                        BigDecimal.valueOf(50000.0)
                 );
 
         when(studentService.saveStudent(any(StudentDTO.class)))

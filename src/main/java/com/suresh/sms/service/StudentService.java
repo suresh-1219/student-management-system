@@ -1,5 +1,6 @@
 package com.suresh.sms.service;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
@@ -10,6 +11,8 @@ import com.suresh.sms.exception.DuplicateStudentException;
 import com.suresh.sms.exception.InvalidRequestException;
 import com.suresh.sms.exception.StudentNotFoundException;
 import com.suresh.sms.repository.StudentRepository;
+import com.suresh.sms.repository.StudentSpecifications;
+import com.suresh.sms.dto.PageResponse;
 import com.suresh.sms.dto.StudentDTO;
 import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
@@ -17,6 +20,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 
 @Service
 public class StudentService {
@@ -137,6 +141,71 @@ public class StudentService {
         repository.delete(existing);
     }
     
+    /**
+     * The one search endpoint: optional filters (name, course, fee range),
+     * sorting and paging in a single call.
+     */
+    public PageResponse<StudentDTO> searchStudents(
+            String name,
+            String course,
+            BigDecimal minFee,
+            BigDecimal maxFee,
+            int page,
+            int size,
+            String sortField,
+            String direction) {
+
+        validatePaging(page, size);
+        validateSortField(sortField);
+        Sort.Direction sortDirection = parseDirection(direction);
+
+        if (minFee != null && maxFee != null && minFee.compareTo(maxFee) > 0) {
+            throw new InvalidRequestException("minFee cannot be greater than maxFee");
+        }
+
+        Specification<Student> spec = (root, query, cb) -> cb.conjunction();
+
+        if (name != null && !name.isBlank()) {
+            spec = spec.and(StudentSpecifications.nameContains(name.trim()));
+        }
+
+        if (course != null && !course.isBlank()) {
+            spec = spec.and(StudentSpecifications.courseEquals(course.trim()));
+        }
+
+        if (minFee != null) {
+            spec = spec.and(StudentSpecifications.feeAtLeast(minFee));
+        }
+
+        if (maxFee != null) {
+            spec = spec.and(StudentSpecifications.feeAtMost(maxFee));
+        }
+
+        // Tie-break on id so paging is stable when many rows share the same value.
+        Sort sort = Sort.by(sortDirection, sortField);
+        if (!"id".equals(sortField)) {
+            sort = sort.and(Sort.by(Sort.Direction.ASC, "id"));
+        }
+
+        Pageable pageable = PageRequest.of(page, size, sort);
+
+        return PageResponse.from(
+                repository.findAll(spec, pageable).map(this::convertToDTO));
+    }
+
+    private Sort.Direction parseDirection(String direction) {
+
+        if ("asc".equalsIgnoreCase(direction)) {
+            return Sort.Direction.ASC;
+        }
+
+        if ("desc".equalsIgnoreCase(direction)) {
+            return Sort.Direction.DESC;
+        }
+
+        throw new InvalidRequestException("Invalid direction. Allowed values: asc, desc");
+    }
+
     private void validateSortField(String field) {
 
         if (field == null || !SORTABLE_FIELDS.contains(field)) {

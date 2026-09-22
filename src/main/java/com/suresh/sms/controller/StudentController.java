@@ -1,5 +1,6 @@
 package com.suresh.sms.controller;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 
@@ -11,10 +12,12 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.suresh.sms.dto.ApiResponse;
+import com.suresh.sms.dto.PageResponse;
 import com.suresh.sms.dto.StudentDTO;
 import com.suresh.sms.entity.Student;
 import com.suresh.sms.service.StudentService;
 
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 
 @RestController
@@ -51,6 +54,7 @@ public class StudentController {
     // GET ALL STUDENTS
 
 
+    @Deprecated
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudentDTO>>> getAllStudents() {
 
@@ -91,6 +95,7 @@ public class StudentController {
     // SEARCH STUDENT BY NAME
     
 
+    @Deprecated
     @GetMapping("/search/{name}")
     public ResponseEntity<ApiResponse<List<StudentDTO>>> getStudentByName(
             @PathVariable String name) {
@@ -103,9 +108,42 @@ public class StudentController {
 
 
   
+    // SEARCH + FILTER + SORT + PAGE (use this instead of the deprecated list endpoints)
+
+    @Operation(
+            summary = "Search, filter, sort and page students",
+            description = "All parameters are optional. name = partial, case-insensitive match; "
+                    + "course = exact, case-insensitive match; minFee / maxFee = inclusive range. "
+                    + "sort: id, name, email, course or fee. direction: asc or desc. "
+                    + "size: 1-100.")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<PageResponse<StudentDTO>>> searchStudents(
+            @RequestParam(name = "name", required = false) String name,
+            @RequestParam(name = "course", required = false) String course,
+            @RequestParam(name = "minFee", required = false) BigDecimal minFee,
+            @RequestParam(name = "maxFee", required = false) BigDecimal maxFee,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "size", defaultValue = "10") int size,
+            @RequestParam(name = "sort", defaultValue = "id") String sort,
+            @RequestParam(name = "direction", defaultValue = "asc") String direction) {
+
+        PageResponse<StudentDTO> result =
+                service.searchStudents(name, course, minFee, maxFee, page, size, sort, direction);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(
+                        true,
+                        "Students retrieved successfully",
+                        result
+                )
+        );
+    }
+
+
     // PAGINATION
  
 
+    @Deprecated
     @GetMapping("/page")
     public ResponseEntity<ApiResponse<Page<StudentDTO>>> getStudents(
             @RequestParam int page,
@@ -128,6 +166,7 @@ public class StudentController {
     // SORT ASCENDING
    
 
+    @Deprecated
     @GetMapping("/sort/{field}")
     public ResponseEntity<ApiResponse<List<StudentDTO>>> sortStudents(
             @PathVariable String field) {
@@ -142,6 +181,7 @@ public class StudentController {
     // SORT DESCENDING
    
 
+    @Deprecated
     @GetMapping("/sortDesc/{field}")
     public ResponseEntity<ApiResponse<List<StudentDTO>>> sortStudentsDesc(
             @PathVariable String field) {
@@ -155,6 +195,7 @@ public class StudentController {
     // PAGINATION + SORTING
     
 
+    @Deprecated
     @GetMapping("/pageSort")
     public ResponseEntity<ApiResponse<Page<StudentDTO>>>
     getStudentsWithPaginationAndSorting(

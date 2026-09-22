@@ -1,5 +1,6 @@
 package com.suresh.sms.controller;
 
+import java.math.BigDecimal;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
@@ -30,6 +31,7 @@ import org.springframework.data.domain.PageRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import com.suresh.sms.dto.PageResponse;
 import com.suresh.sms.dto.StudentDTO;
 import com.suresh.sms.entity.Student;
 import com.suresh.sms.service.StudentService;
@@ -59,7 +61,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         StudentDTO s2 = new StudentDTO(
@@ -67,7 +69,7 @@ class StudentControllerTest {
                 "Rahul",
                 "rahul@gmail.com",
                 "B.Tech",
-                45000.0
+                BigDecimal.valueOf(45000.0)
         );
 
         when(service.getAllStudents())
@@ -102,7 +104,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(service.getStudentById(1L))
@@ -140,7 +142,7 @@ class StudentControllerTest {
                 "Kiran",
                 "kiran@gmail.com",
                 "MCA",
-                55000.0
+                BigDecimal.valueOf(55000.0)
         );
 
         StudentDTO saved = new StudentDTO(
@@ -148,7 +150,7 @@ class StudentControllerTest {
                 "Kiran",
                 "kiran@gmail.com",
                 "MCA",
-                55000.0
+                BigDecimal.valueOf(55000.0)
         );
 
         when(service.saveStudent(any(StudentDTO.class)))
@@ -190,7 +192,7 @@ class StudentControllerTest {
                 "Kiran",
                 "kiran@gmail.com",
                 "B.Tech",
-                60000.0
+                BigDecimal.valueOf(60000.0)
         );
 
         when(service.updateStudent(
@@ -264,7 +266,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(service.getStudentByName("Suresh"))
@@ -300,7 +302,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         Page<StudentDTO> page =
@@ -346,7 +348,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(service.sortStudents("name"))
@@ -383,7 +385,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         when(service.sortStudentsDesc("name"))
@@ -421,7 +423,7 @@ class StudentControllerTest {
                 "Suresh",
                 "suresh@gmail.com",
                 "MCA",
-                50000.0
+                BigDecimal.valueOf(50000.0)
         );
 
         Page<StudentDTO> page =
@@ -461,5 +463,75 @@ class StudentControllerTest {
 
         .andExpect(jsonPath("$.data.content[0].name")
                 .value("Suresh"));
+    }
+
+    // SEARCH ENDPOINT
+
+    @Test
+    void testSearchPassesAllParametersToService() throws Exception {
+
+        StudentDTO dto = new StudentDTO(
+                1L, "Suresh", "suresh@gmail.com", "MCA", BigDecimal.valueOf(50000.0));
+
+        PageResponse<StudentDTO> response =
+                new PageResponse<>(Arrays.asList(dto), 0, 5, 1L, 1, true, true);
+
+        when(service.searchStudents(
+                any(), any(), any(), any(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                any(), any()))
+                .thenReturn(response);
+
+        mockMvc.perform(
+                get("/students/search")
+                        .param("name", "suresh")
+                        .param("course", "MCA")
+                        .param("minFee", "1000.50")
+                        .param("maxFee", "60000")
+                        .param("size", "5")
+                        .param("sort", "fee")
+                        .param("direction", "desc")
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.success").value(true))
+        .andExpect(jsonPath("$.data.content[0].name").value("Suresh"))
+        .andExpect(jsonPath("$.data.totalElements").value(1))
+        .andExpect(jsonPath("$.data.size").value(5))
+        .andExpect(jsonPath("$.data.first").value(true));
+
+        verify(service).searchStudents(
+                "suresh", "MCA",
+                new BigDecimal("1000.50"), new BigDecimal("60000"),
+                0, 5, "fee", "desc");
+    }
+
+    @Test
+    void testSearchUsesDefaultsWhenNoParametersGiven() throws Exception {
+
+        PageResponse<StudentDTO> empty =
+                new PageResponse<>(Arrays.asList(), 0, 10, 0L, 0, true, true);
+
+        when(service.searchStudents(
+                any(), any(), any(), any(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                org.mockito.ArgumentMatchers.anyInt(),
+                any(), any()))
+                .thenReturn(empty);
+
+        mockMvc.perform(get("/students/search"))
+                .andExpect(status().isOk());
+
+        verify(service).searchStudents(
+                null, null, null, null, 0, 10, "id", "asc");
+    }
+
+    @Test
+    void testSearchRejectsNonNumericFee() throws Exception {
+
+        mockMvc.perform(
+                get("/students/search").param("minFee", "abc")
+        )
+        .andExpect(status().isBadRequest());
     }
 }
