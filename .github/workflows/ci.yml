@@ -18,6 +18,12 @@ jobs:
       - name: Check out code
         uses: actions/checkout@v4
 
+      # Windows checkouts (and Git in general) don't preserve the Unix
+      # executable bit on mvnw, so the Linux runner refuses to run it
+      # ("Permission denied", exit code 126) unless we set it explicitly.
+      - name: Make mvnw executable
+        run: chmod +x ./mvnw
+
       - name: Set up JDK 21
         uses: actions/setup-java@v4
         with:
