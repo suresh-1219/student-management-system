@@ -1,5 +1,7 @@
 package com.suresh.sms.repository;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import java.math.BigDecimal;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -27,7 +29,7 @@ import com.suresh.sms.entity.Student;
  */
 @SpringBootTest
 @Transactional
-class StudentRepositoryDatabaseTest {
+class StudentRepositoryDatabaseTest extends AbstractIntegrationTest {
 
     @Autowired
     private StudentRepository repository;

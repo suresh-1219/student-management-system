@@ -1,5 +1,7 @@
 package com.suresh.sms.config;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -17,7 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
  * application context would not even start and this test would error.)
  */
 @SpringBootTest
-class FlywayMigrationTest {
+class FlywayMigrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private Flyway flyway;

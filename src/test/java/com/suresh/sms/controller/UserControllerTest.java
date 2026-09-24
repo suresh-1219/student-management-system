@@ -1,5 +1,7 @@
 package com.suresh.sms.controller;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -28,7 +30,7 @@ import com.suresh.sms.service.UserService;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-class UserControllerTest {
+class UserControllerTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

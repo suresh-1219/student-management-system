@@ -23,9 +23,11 @@ The Student Management System is a backend application designed to manage studen
 
 ## ✅ Testing
 
-- 77 unit, controller, and integration tests written using JUnit 5 and Mockito
-- 97% instruction coverage, verified via JaCoCo
-- Covers the service layer, controllers, JWT filter/util, DTOs, entities, and exception handling
+- 146+ unit, controller, and integration tests written using JUnit 5 and Mockito
+- Verified via JaCoCo (see `target/site/jacoco/index.html` after running tests)
+- Covers the service layer, controllers, JWT filter/util, DTOs, entities, exception handling, database migrations and repository queries
+- Database-backed tests run against a real, throwaway MySQL container via [Testcontainers](https://testcontainers.com/) - **Docker must be running**, but no local MySQL, `JWT_SECRET` or `DB_PASSWORD` is needed to run `mvn test`
+- Runs automatically on every push via GitHub Actions (see `.github/workflows/ci.yml`)
 
 ## 🛠️ Tech Stack
 
@@ -158,8 +160,9 @@ Full interactive API documentation is available via Swagger once the app is runn
 ### Prerequisites
 
 - Java 21
-- Maven
-- MySQL 8 (or Docker, to run it in a container)
+- Maven (or use the bundled `./mvnw` / `mvnw.cmd`)
+- MySQL 8, to *run* the app (not needed to run the tests)
+- Docker, to *test* the app (via Testcontainers) or to run everything with `docker compose`
 
 ### Environment Variables
 
@@ -207,10 +210,27 @@ mvn spring-boot:run
 
 The application runs on `http://localhost:9090`.
 
-### Run with Docker
+### Run with Docker Compose (recommended)
+
+Brings up MySQL and the app together, with no local Maven or MySQL install
+needed - only Docker.
 
 ```bash
-mvn clean package -DskipTests
+cp .env.example .env
+# edit .env: set DB_PASSWORD and JWT_SECRET
+
+docker compose up --build
+```
+
+The app is then at `http://localhost:9090`, and MySQL is reachable from your
+own machine (e.g. Workbench) at `localhost:3307`, same as running locally.
+`docker compose down` stops it; add `-v` to also delete the database volume.
+
+### Run with plain Docker
+
+For running just the app image against a MySQL you already have:
+
+```bash
 docker build -t student-management-system .
 docker run -p 9090:9090 \
   -e DB_URL=jdbc:mysql://host.docker.internal:3307/student_db \
@@ -220,13 +240,28 @@ docker run -p 9090:9090 \
   student-management-system
 ```
 
+The image is a multi-stage build (compiles inside the image, so a separate
+`mvn package` step isn't needed), runs as a non-root user, and reports
+health via `/actuator/health`.
+
 ### Run tests + coverage report
 
 ```bash
 mvn test
 ```
 
+No environment variables and no local MySQL are required - the database tests
+start their own MySQL container automatically via Testcontainers. **Docker
+must be running** for this to work; if it isn't, the build fails with a
+message about not being able to connect to a Docker daemon.
+
 The JaCoCo coverage report is generated at `target/site/jacoco/index.html`.
+
+### Health check
+
+`GET /actuator/health` (no login needed) reports whether the app and its
+database connection are healthy - useful for the Docker healthcheck below,
+and for a future load balancer or uptime monitor.
 
 ## 📄 License
 

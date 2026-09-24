@@ -1,5 +1,7 @@
 package com.suresh.sms.controller;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -25,7 +27,7 @@ import com.suresh.sms.service.UserService;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-class AuthControllerTest {
+class AuthControllerTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

@@ -1,5 +1,7 @@
 package com.suresh.sms.exception;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.when;
 
@@ -33,7 +35,7 @@ import com.suresh.sms.service.UserService;
 
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-class ExceptionIntegrationTest {
+class ExceptionIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

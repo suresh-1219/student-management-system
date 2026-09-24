@@ -1,5 +1,7 @@
 package com.suresh.sms.exception;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.not;
 import static org.mockito.ArgumentMatchers.any;
@@ -29,7 +31,7 @@ import com.suresh.sms.service.StudentService;
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-class ErrorHandlingIntegrationTest {
+class ErrorHandlingIntegrationTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;

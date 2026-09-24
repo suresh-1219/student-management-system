@@ -1,5 +1,7 @@
 package com.suresh.sms.controller;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import java.math.BigDecimal;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
@@ -28,7 +30,7 @@ import com.suresh.sms.service.StudentService;
  */
 @SpringBootTest
 @AutoConfigureMockMvc(addFilters = false)
-class StudentValidationTest {
+class StudentValidationTest extends AbstractIntegrationTest {
 
     @MockitoBean
     private StudentService studentService;

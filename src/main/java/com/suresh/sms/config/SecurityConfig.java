@@ -79,6 +79,15 @@ public class SecurityConfig {
                     "/v3/api-docs/**"
                 ).permitAll()
 
+                // Health/info checks (Docker, load balancers, uptime monitors).
+                // No env/beans/etc are exposed (see application.properties), so
+                // this is safe to leave public.
+                .requestMatchers(
+                    "/actuator/health",
+                    "/actuator/health/**",
+                    "/actuator/info"
+                ).permitAll()
+
                 // USER + ADMIN can READ
                 .requestMatchers(
                     HttpMethod.GET,

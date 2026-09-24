@@ -1,5 +1,7 @@
 package com.suresh.sms.repository;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -25,7 +27,7 @@ import com.suresh.sms.service.StudentService;
  */
 @SpringBootTest
 @Transactional
-class StudentSearchDatabaseTest {
+class StudentSearchDatabaseTest extends AbstractIntegrationTest {
 
     private static final String PREFIX = "ZzSrch";
 

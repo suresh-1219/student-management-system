@@ -1,0 +1,49 @@
+# Brings up MySQL and the app together.
+#
+# Usage:
+#   1. Copy .env.example to .env and fill in real values.
+#   2. docker compose up --build
+#
+# The app is then at http://localhost:9090/swagger-ui/index.html
+
+services:
+
+  db:
+    image: mysql:8.4
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: student_db
+      MYSQL_ROOT_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+    ports:
+      # host:container - lets you still connect with Workbench on 3307
+      - "3307:3306"
+    volumes:
+      - student-db-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-p${DB_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    restart: unless-stopped
+    ports:
+      - "9090:9090"
+    environment:
+      # Inside the Docker network, MySQL is reached as "db" on its
+      # container port 3306 - NOT localhost:3307 (that mapping is only
+      # for tools like Workbench running on your own machine).
+      DB_URL: jdbc:mysql://db:3306/student_db
+      DB_USERNAME: root
+      DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
+      JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  student-db-data:

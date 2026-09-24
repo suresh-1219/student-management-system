@@ -1,5 +1,7 @@
 package com.suresh.sms.jwt;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -8,7 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 
 @SpringBootTest
-class JwtUtilTest {
+class JwtUtilTest extends AbstractIntegrationTest {
 
     @Autowired
     private JwtUtil jwtUtil;

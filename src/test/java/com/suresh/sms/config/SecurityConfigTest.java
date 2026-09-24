@@ -1,5 +1,7 @@
 package com.suresh.sms.config;
 
+import com.suresh.sms.support.AbstractIntegrationTest;
+
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.user;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -21,7 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class SecurityConfigTest {
+class SecurityConfigTest extends AbstractIntegrationTest {
 
     @Autowired
     private MockMvc mockMvc;
