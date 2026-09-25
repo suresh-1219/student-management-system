@@ -112,6 +112,31 @@ public class SecurityConfig {
                     "/students/**"
                 ).hasRole("ADMIN")
 
+                // USER + ADMIN can READ courses and enrollments
+                .requestMatchers(
+                    HttpMethod.GET,
+                    "/courses/**",
+                    "/enrollments/**"
+                ).hasAnyRole("USER", "ADMIN")
+
+                // ADMIN only - manage courses and enrollments (create, update, delete/unenroll)
+                .requestMatchers(
+                    HttpMethod.POST,
+                    "/courses/**",
+                    "/enrollments/**"
+                ).hasRole("ADMIN")
+
+                .requestMatchers(
+                    HttpMethod.PUT,
+                    "/courses/**"
+                ).hasRole("ADMIN")
+
+                .requestMatchers(
+                    HttpMethod.DELETE,
+                    "/courses/**",
+                    "/enrollments/**"
+                ).hasRole("ADMIN")
+
                 // Everything else
                 .anyRequest().authenticated()
             )

@@ -86,6 +86,48 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(CourseNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCourseNotFound(
+            CourseNotFoundException ex) {
+
+        return response(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateCourseException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateCourseException(
+            DuplicateCourseException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(EnrollmentNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleEnrollmentNotFound(
+            EnrollmentNotFoundException ex) {
+
+        return response(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateEnrollmentException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateEnrollmentException(
+            DuplicateEnrollmentException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(CourseCapacityExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleCourseCapacityExceeded(
+            CourseCapacityExceededException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(CourseHasEnrollmentsException.class)
+    public ResponseEntity<Map<String, Object>> handleCourseHasEnrollments(
+            CourseHasEnrollmentsException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(
             InvalidRequestException ex) {

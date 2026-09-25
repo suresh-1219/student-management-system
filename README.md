@@ -137,6 +137,24 @@ The result is wrapped in the usual `data` field and contains `content`, `page`, 
 
 **Unique e-mail:** a student's e-mail must be unique. Creating a student, or changing an e-mail, to one that another student already uses returns `409 Conflict`.
 
+### Courses and enrollments
+
+A student's `course` field (e.g. `"MCA"`) is a free-text label kept for backward compatibility. Separately, a student can be **enrolled** in named `Course` records that have a capacity limit and a record of when each student joined.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/courses` | USER, ADMIN | List all courses |
+| GET | `/courses/{id}` | USER, ADMIN | Get a course by ID |
+| POST | `/courses` | ADMIN | Create a course (`code`, `title`, `capacity`) |
+| PUT | `/courses/{id}` | ADMIN | Update a course |
+| DELETE | `/courses/{id}` | ADMIN | Delete a course *(fails with `409` if students are still enrolled)* |
+| GET | `/enrollments/student/{studentId}` | USER, ADMIN | List a student's enrollments |
+| GET | `/enrollments/course/{courseId}` | USER, ADMIN | List a course's enrollments |
+| POST | `/enrollments` | ADMIN | Enroll a student in a course (`studentId`, `courseId`) |
+| DELETE | `/enrollments/{id}` | ADMIN | Unenroll (by the enrollment's own ID) |
+
+**Course codes are unique**, and **a student cannot be enrolled in the same course twice** - both return `409`. **A course cannot be deleted while it still has enrollments** - unenroll every student first, also `409`. **Enrolling into a full course** (enrollment count has reached its capacity) returns `409`. That last check takes a row lock on the course for the duration of the enrollment, so two requests racing for the last seat are handled one after another rather than both slipping through on stale data.
+
 ### Error responses
 
 Every error (including 401 and 403) uses the same JSON shape:
