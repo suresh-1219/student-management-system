@@ -3,6 +3,7 @@ package com.suresh.sms.controller;
 import com.suresh.sms.support.AbstractIntegrationTest;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
@@ -23,6 +24,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 
 import com.suresh.sms.dto.LoginRequest;
 import com.suresh.sms.dto.LoginResponse;
+import com.suresh.sms.dto.RefreshTokenRequest;
+import com.suresh.sms.dto.TokenPair;
+import com.suresh.sms.exception.InvalidRefreshTokenException;
 import com.suresh.sms.service.UserService;
 
 @SpringBootTest
@@ -52,13 +56,8 @@ class AuthControllerTest extends AbstractIntegrationTest {
                         "password"
                 );
 
-        LoginResponse response =
-                new LoginResponse("test-token");
-
-
-        when(userService.login(any(LoginRequest.class)))
-                .thenReturn("test-token");
-
+        when(userService.loginWithRefreshToken(any(LoginRequest.class)))
+                .thenReturn(new TokenPair("test-token", "test-refresh-token"));
 
         mockMvc.perform(
                 post("/auth/login")
@@ -69,7 +68,75 @@ class AuthControllerTest extends AbstractIntegrationTest {
         )
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.token")
-                .value("test-token"));
+                .value("test-token"))
+        .andExpect(jsonPath("$.refreshToken")
+                .value("test-refresh-token"));
+    }
+
+
+    // REFRESH
+
+    @Test
+    void testRefreshReturnsNewTokenPair() throws Exception {
+
+        when(userService.refresh("old-refresh-token"))
+                .thenReturn(new TokenPair("new-access-token", "new-refresh-token"));
+
+        mockMvc.perform(
+                post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RefreshTokenRequest("old-refresh-token")))
+        )
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.token").value("new-access-token"))
+        .andExpect(jsonPath("$.refreshToken").value("new-refresh-token"));
+    }
+
+    @Test
+    void testRefreshRejectsInvalidToken() throws Exception {
+
+        when(userService.refresh("bad-token"))
+                .thenThrow(new InvalidRefreshTokenException("Invalid or expired refresh token"));
+
+        mockMvc.perform(
+                post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RefreshTokenRequest("bad-token")))
+        )
+        .andExpect(status().isUnauthorized())
+        .andExpect(jsonPath("$.message").value("Invalid or expired refresh token"));
+    }
+
+    @Test
+    void testRefreshRejectsBlankToken() throws Exception {
+
+        mockMvc.perform(
+                post("/auth/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"refreshToken\":\"  \"}")
+        )
+        .andExpect(status().isBadRequest());
+
+        verifyNoInteractions(userService);
+    }
+
+
+    // LOGOUT
+
+    @Test
+    void testLogoutReturnsNoContent() throws Exception {
+
+        mockMvc.perform(
+                post("/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                new RefreshTokenRequest("some-refresh-token")))
+        )
+        .andExpect(status().isNoContent());
+
+        verify(userService).logout("some-refresh-token");
     }
 
     // LOGIN VALIDATION

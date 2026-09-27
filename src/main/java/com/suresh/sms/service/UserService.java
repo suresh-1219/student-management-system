@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 
 import com.suresh.sms.dto.LoginRequest;
 import com.suresh.sms.dto.RegisterRequest;
+import com.suresh.sms.dto.TokenPair;
 import com.suresh.sms.dto.UserResponseDTO;
 import com.suresh.sms.entity.Role;
 import com.suresh.sms.entity.User;
@@ -13,6 +14,7 @@ import com.suresh.sms.jwt.JwtUtil;
 import com.suresh.sms.repository.UserRepository;
 import com.suresh.sms.exception.DuplicateUserException;
 import com.suresh.sms.exception.InvalidCredentialsException;
+import com.suresh.sms.exception.InvalidRefreshTokenException;
 @Service
 public class UserService {
 
@@ -24,6 +26,9 @@ public class UserService {
 
     @Autowired
     private JwtUtil jwtUtil;
+
+    @Autowired
+    private RefreshTokenService refreshTokenService;
 
 
     
@@ -72,9 +77,9 @@ public class UserService {
     }
 
 
-    // USER LOGIN
-    
-    public String login(LoginRequest request) {
+    // USER LOGIN (access token + refresh token)
+
+    public TokenPair loginWithRefreshToken(LoginRequest request) {
 
         User user = userRepository.findByUsername(request.getUsername())
                 .orElseThrow(() ->
@@ -84,7 +89,36 @@ public class UserService {
             throw new InvalidCredentialsException("Invalid username or password");
         }
 
-        return jwtUtil.generateToken(user.getUsername(), user.getRole().name());
+        String accessToken = jwtUtil.generateToken(user.getUsername(), user.getRole().name());
+        String refreshToken = refreshTokenService.issue(user);
+
+        return new TokenPair(accessToken, refreshToken);
+    }
+
+
+    // REFRESH (rotates the refresh token: the old one stops working)
+
+    public TokenPair refresh(String rawRefreshToken) {
+
+        User user = refreshTokenService.validateAndRevoke(rawRefreshToken);
+
+        if (!userRepository.existsById(user.getId())) {
+            // The user was deleted after the refresh token was issued.
+            throw new InvalidRefreshTokenException("Invalid or expired refresh token");
+        }
+
+        String accessToken = jwtUtil.generateToken(user.getUsername(), user.getRole().name());
+        String newRefreshToken = refreshTokenService.issue(user);
+
+        return new TokenPair(accessToken, newRefreshToken);
+    }
+
+
+    // LOGOUT (revokes the refresh token; the access token still expires on its own)
+
+    public void logout(String rawRefreshToken) {
+
+        refreshTokenService.revoke(rawRefreshToken);
     }
 
 

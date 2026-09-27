@@ -39,6 +39,7 @@ The Student Management System is a backend application designed to manage studen
 | Hibernate | ORM |
 | MySQL 8 | Database |
 | Flyway | Versioned database migrations |
+| Redis | Caching (optional locally; included in `docker compose`) |
 | JWT (jjwt) | Authentication |
 | Spring Security | Authorization |
 | ModelMapper | Entity-DTO conversion |
@@ -74,15 +75,20 @@ MySQL Database
 ![Student Management System Architecture](student-management-system/docs/student-management-systemdocsarchitecture.png)
 ## 🔐 Authentication
 
-All endpoints except `/auth/login`, `/users/register`, and Swagger routes require a valid JWT.
+All endpoints except `/auth/login`, `/auth/refresh`, `/auth/logout`, `/users/register`, and Swagger routes require a valid JWT.
 
 1. Register a user via `POST /users/register` (body: `username`, `email`, `password`). Public registration **always creates a `USER`**; any `role` sent by the client is ignored.
-2. Log in via `POST /auth/login` to receive a JWT
-3. Pass the token on subsequent requests as a header:
+2. Log in via `POST /auth/login` (body: `username`, `password`) to receive **both** an access token and a refresh token.
+3. Pass the access token on subsequent requests as a header:
 
 ```
 Authorization: Bearer <token>
 ```
+
+4. The access token is short-lived (15 minutes by default). Before it expires, call `POST /auth/refresh` (body: `{"refreshToken": "..."}`) to get a new access token **and** a new refresh token - the old refresh token is rotated and stops working the moment it's used, so a stolen one is only useful once.
+5. `POST /auth/logout` (same body shape) revokes a refresh token. The access token itself isn't revoked; it simply expires on its own within minutes.
+
+**Login is rate-limited** to 5 attempts per IP address per minute; further attempts get `429 Too Many Requests`. This applies per application instance - a multi-instance deployment behind a load balancer would need a shared store (Redis) for the limit to apply globally, which isn't implemented here.
 
 ## 📚 API Endpoints
 
@@ -90,7 +96,9 @@ Authorization: Bearer <token>
 
 | Method | Endpoint | Access | Description |
 |---|---|---|---|
-| POST | `/auth/login` | Public | Authenticate and receive a JWT |
+| POST | `/auth/login` | Public | Authenticate and receive an access token + refresh token |
+| POST | `/auth/refresh` | Public | Exchange a valid refresh token for a new token pair |
+| POST | `/auth/logout` | Public | Revoke a refresh token |
 
 ### Users
 
@@ -195,6 +203,10 @@ The application reads the following from the environment:
 | `ADMIN_PASSWORD` | *Optional.* If set, an `ADMIN` account is created on startup (skipped if it already exists) |
 | `ADMIN_USERNAME` | Admin username (defaults to `admin`) |
 | `ADMIN_EMAIL` | Admin email (defaults to `admin@example.com`) |
+| `JWT_ACCESS_TOKEN_EXPIRATION_MS` | Access token lifetime in ms (defaults to `900000`, 15 minutes) |
+| `JWT_REFRESH_TOKEN_EXPIRATION_MS` | Refresh token lifetime in ms (defaults to `604800000`, 7 days) |
+| `REDIS_HOST` | Redis host for caching (defaults to `localhost`) |
+| `REDIS_PORT` | Redis port for caching (defaults to `6379`) |
 
 ### Creating the first admin
 

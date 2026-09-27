@@ -21,6 +21,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 import com.suresh.sms.jwt.JwtFilter;
+import com.suresh.sms.jwt.LoginRateLimitFilter;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -29,6 +30,9 @@ public class SecurityConfig {
 
     @Autowired
     private JwtFilter jwtFilter;
+
+    @Autowired
+    private LoginRateLimitFilter loginRateLimitFilter;
 
     @Bean
     public SecurityFilterChain securityFilterChain(
@@ -60,10 +64,13 @@ public class SecurityConfig {
            
             .authorizeHttpRequests(auth -> auth
 
-                // Public login
+                // Public login, refresh and logout (all authenticate via a
+                // token in the request body, not the Authorization header)
                 .requestMatchers(
                     HttpMethod.POST,
-                    "/auth/login"
+                    "/auth/login",
+                    "/auth/refresh",
+                    "/auth/logout"
                 ).permitAll()
 
                 // Public registration
@@ -168,8 +175,13 @@ public class SecurityConfig {
             );
 
        
-        // JWT FILTER
+        // RATE LIMIT LOGIN, THEN JWT FILTER
         
+        http.addFilterBefore(
+            loginRateLimitFilter,
+            UsernamePasswordAuthenticationFilter.class
+        );
+
         http.addFilterBefore(
             jwtFilter,
             UsernamePasswordAuthenticationFilter.class

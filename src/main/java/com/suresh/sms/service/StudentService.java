@@ -4,6 +4,8 @@ import java.math.BigDecimal;
 import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import com.suresh.sms.entity.Student;
@@ -45,6 +47,7 @@ public class StudentService {
                 .collect(Collectors.toList());
     }
     
+    @Cacheable(value = "students", key = "#id")
     public StudentDTO getStudentById(Long id) {
 
         Student student = repository.findById(id)
@@ -112,6 +115,7 @@ public class StudentService {
         return convertToDTO(saved);
     }
 
+    @CacheEvict(value = "students", key = "#id")
     public StudentDTO updateStudent(Long id, StudentDTO dto) {
 
         Student existing = repository.findById(id)
@@ -132,6 +136,7 @@ public class StudentService {
 
         return convertToDTO(updated);
     }
+    @CacheEvict(value = "students", key = "#id")
     public void deleteStudent(Long id) {
 
         Student existing = repository.findById(id)

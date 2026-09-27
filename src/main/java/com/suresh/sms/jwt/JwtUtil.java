@@ -21,12 +21,16 @@ public class JwtUtil {
     // CONSTRUCTOR
     
 
+    private final long accessTokenExpirationMs;
+
     public JwtUtil(
-            @Value("${jwt.secret}") String secret) {
+            @Value("${jwt.secret}") String secret,
+            @Value("${jwt.access-token-expiration-ms:900000}") long accessTokenExpirationMs) {
 
         this.key = Keys.hmacShaKeyFor(
                 secret.getBytes(StandardCharsets.UTF_8)
         );
+        this.accessTokenExpirationMs = accessTokenExpirationMs;
     }
 
 
@@ -45,7 +49,7 @@ public class JwtUtil {
                 .expiration(
                         new Date(
                                 System.currentTimeMillis()
-                                        + 3600000
+                                        + accessTokenExpirationMs
                         )
                 )
                 .signWith(key)

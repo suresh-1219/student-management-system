@@ -23,7 +23,9 @@ import com.suresh.sms.dto.RegisterRequest;
 import com.suresh.sms.dto.UserResponseDTO;
 import com.suresh.sms.entity.Role;
 import com.suresh.sms.entity.User;
+import com.suresh.sms.dto.TokenPair;
 import com.suresh.sms.exception.DuplicateUserException;
+import com.suresh.sms.exception.InvalidRefreshTokenException;
 import com.suresh.sms.jwt.JwtUtil;
 import com.suresh.sms.repository.UserRepository;
 
@@ -38,6 +40,9 @@ class UserServiceTest {
 
     @Mock
     private JwtUtil jwtUtil;
+
+    @Mock
+    private RefreshTokenService refreshTokenService;
 
     @InjectMocks
     private UserService userService;
@@ -150,8 +155,8 @@ class UserServiceTest {
 
 
  
-    // LOGIN SUCCESS TEST
-  
+    // LOGIN SUCCESS TEST (access token + refresh token)
+
     @Test
     void testLoginSuccess() {
 
@@ -177,17 +182,20 @@ class UserServiceTest {
                 "USER"))
                 .thenReturn("test-token");
 
-        String result = userService.login(request);
+        when(refreshTokenService.issue(user))
+                .thenReturn("test-refresh-token");
+
+        TokenPair result = userService.loginWithRefreshToken(request);
 
         assertNotNull(result);
-
-        assertEquals("test-token", result);
+        assertEquals("test-token", result.accessToken());
+        assertEquals("test-refresh-token", result.refreshToken());
     }
 
 
-   
+
     // INVALID USERNAME TEST
-   
+
     @Test
     void testLoginInvalidUsername() {
 
@@ -200,17 +208,19 @@ class UserServiceTest {
         RuntimeException exception =
                 assertThrows(
                         RuntimeException.class,
-                        () -> userService.login(request)
+                        () -> userService.loginWithRefreshToken(request)
                 );
 
         assertEquals(
                 "Invalid username or password",
                 exception.getMessage()
         );
+
+        verify(refreshTokenService, never()).issue(any(User.class));
     }
 
 
-   
+
     // INVALID PASSWORD TEST
 
     @Test
@@ -236,12 +246,84 @@ class UserServiceTest {
         RuntimeException exception =
                 assertThrows(
                         RuntimeException.class,
-                        () -> userService.login(request)
+                        () -> userService.loginWithRefreshToken(request)
                 );
 
         assertEquals(
                 "Invalid username or password",
                 exception.getMessage()
         );
+
+        verify(refreshTokenService, never()).issue(any(User.class));
+    }
+
+
+    // REFRESH: rotates the refresh token and issues a new access token
+
+    @Test
+    void testRefreshIssuesNewTokenPair() {
+
+        User user = new User();
+        user.setId(7L);
+        user.setUsername("suresh");
+        user.setRole(Role.USER);
+
+        when(refreshTokenService.validateAndRevoke("old-refresh-token"))
+                .thenReturn(user);
+
+        when(repository.existsById(7L)).thenReturn(true);
+
+        when(jwtUtil.generateToken("suresh", "USER"))
+                .thenReturn("new-access-token");
+
+        when(refreshTokenService.issue(user))
+                .thenReturn("new-refresh-token");
+
+        TokenPair result = userService.refresh("old-refresh-token");
+
+        assertEquals("new-access-token", result.accessToken());
+        assertEquals("new-refresh-token", result.refreshToken());
+    }
+
+    @Test
+    void testRefreshRejectsWhenUserWasDeleted() {
+
+        User user = new User();
+        user.setId(7L);
+        user.setUsername("suresh");
+        user.setRole(Role.USER);
+
+        when(refreshTokenService.validateAndRevoke("old-refresh-token"))
+                .thenReturn(user);
+
+        when(repository.existsById(7L)).thenReturn(false);
+
+        assertThrows(
+                InvalidRefreshTokenException.class,
+                () -> userService.refresh("old-refresh-token"));
+
+        verify(refreshTokenService, never()).issue(any(User.class));
+    }
+
+    @Test
+    void testRefreshPropagatesInvalidToken() {
+
+        when(refreshTokenService.validateAndRevoke("bad-token"))
+                .thenThrow(new InvalidRefreshTokenException("Invalid or expired refresh token"));
+
+        assertThrows(
+                InvalidRefreshTokenException.class,
+                () -> userService.refresh("bad-token"));
+    }
+
+
+    // LOGOUT: just delegates to RefreshTokenService
+
+    @Test
+    void testLogoutRevokesTheRefreshToken() {
+
+        userService.logout("some-refresh-token");
+
+        verify(refreshTokenService).revoke("some-refresh-token");
     }
 }

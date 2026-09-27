@@ -25,24 +25,42 @@ services:
       timeout: 5s
       retries: 10
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # No password and not exposed to the host on purpose: only the "app"
+    # service on this same Docker network can reach it. Caching still works
+    # even if this container is skipped or unreachable - see CacheConfig's
+    # cacheErrorHandler - so Redis is a performance optimization here, not a
+    # hard requirement for the app to start.
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
   app:
     build: .
     restart: unless-stopped
     ports:
       - "9090:9090"
     environment:
-      # Inside the Docker network, MySQL is reached as "db" on its
-      # container port 3306 - NOT localhost:3307 (that mapping is only
-      # for tools like Workbench running on your own machine).
+      # Inside the Docker network, MySQL and Redis are reached by their
+      # service names ("db", "redis") on their container ports - NOT
+      # localhost (that only applies to tools like Workbench running on
+      # your own machine, via the "3307:3306" port mapping above).
       DB_URL: jdbc:mysql://db:3306/student_db
       DB_USERNAME: root
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
+      REDIS_HOST: redis
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
 
 volumes:

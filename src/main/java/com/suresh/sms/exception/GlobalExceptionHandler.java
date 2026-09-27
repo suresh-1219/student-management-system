@@ -79,6 +79,13 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(com.suresh.sms.exception.InvalidRefreshTokenException.class)
+    public ResponseEntity<Map<String, Object>> handleInvalidRefreshToken(
+            com.suresh.sms.exception.InvalidRefreshTokenException ex) {
+
+        return response(HttpStatus.UNAUTHORIZED, ex.getMessage());
+    }
+
     @ExceptionHandler(DuplicateStudentException.class)
     public ResponseEntity<Map<String, Object>> handleDuplicateStudentException(
             DuplicateStudentException ex) {
