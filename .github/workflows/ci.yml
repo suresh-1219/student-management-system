@@ -26,7 +26,7 @@ jobs:
 
     steps:
       - name: Check out code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       # Windows checkouts (and Git in general) don't preserve the Unix
       # executable bit on mvnw, so the Linux runner refuses to run it
