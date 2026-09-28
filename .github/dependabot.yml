@@ -1,0 +1,26 @@
+# Dependabot opens a pull request when a dependency has a new version or a
+# known security vulnerability, so the project does not silently rot.
+# Every PR runs the CI workflow, so a bad upgrade shows up red before merging.
+version: 2
+
+updates:
+  - package-ecosystem: "maven"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    ignore:
+      # Testcontainers is pinned to 1.21.x on purpose (see pom.xml): 2.x is a
+      # major upgrade to be done deliberately, not by an automatic PR.
+      - dependency-name: "org.testcontainers:*"
+        update-types: ["version-update:semver-major"]
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"

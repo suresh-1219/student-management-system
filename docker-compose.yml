@@ -54,6 +54,12 @@ services:
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       REDIS_HOST: redis
+      # "prod" = no SQL echo, JSON logs, graceful shutdown (see
+      # application-prod.properties). Swagger is switched back ON here only so
+      # this demo stack stays easy to try; leave it off for a real deployment.
+      SPRING_PROFILES_ACTIVE: prod
+      SWAGGER_ENABLED: ${SWAGGER_ENABLED:-true}
+      CORS_ALLOWED_ORIGINS: ${CORS_ALLOWED_ORIGINS:-http://localhost:3000,http://localhost:5173}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@example.com}
       ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}

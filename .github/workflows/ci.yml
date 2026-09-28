@@ -10,6 +10,16 @@ on:
   pull_request:
     branches: [ "master", "main" ]
 
+# The workflow only needs to read the code; upload-artifact needs no extra
+# permission. Least privilege limits the damage if a step is ever compromised.
+permissions:
+  contents: read
+
+# A newer push to the same branch makes an older, still-running CI run pointless.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest

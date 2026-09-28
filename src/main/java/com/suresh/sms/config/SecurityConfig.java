@@ -2,8 +2,11 @@ package com.suresh.sms.config;
 
 import java.io.IOException;
 import java.time.Instant;
+import java.util.Arrays;
+import java.util.List;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -11,6 +14,7 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 
+import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 
@@ -22,6 +26,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 
 import com.suresh.sms.jwt.JwtFilter;
 import com.suresh.sms.jwt.LoginRateLimitFilter;
+
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 import jakarta.servlet.http.HttpServletResponse;
 
@@ -43,6 +51,10 @@ public class SecurityConfig {
             // CSRF
          
             .csrf(csrf -> csrf.disable())
+
+            // CORS: lets a browser frontend on another origin call this API
+            // (see corsConfigurationSource below)
+            .cors(Customizer.withDefaults())
 
           
             // STATELESS SESSION
@@ -94,6 +106,11 @@ public class SecurityConfig {
                     "/actuator/health/**",
                     "/actuator/info"
                 ).permitAll()
+
+                // Everything else under /actuator (metrics) reveals internals:
+                // endpoint names, error rates, JVM and database pool stats.
+                // ADMIN only.
+                .requestMatchers("/actuator/**").hasRole("ADMIN")
 
                 // USER + ADMIN can READ
                 .requestMatchers(
@@ -210,6 +227,41 @@ public class SecurityConfig {
                 status.value(),
                 status.getReasonPhrase(),
                 message));
+    }
+
+
+    // CORS
+    //
+    // Only the origins listed in app.cors.allowed-origins (comma separated;
+    // CORS_ALLOWED_ORIGINS) may call this API from a browser on another
+    // origin. Empty = no cross-origin browser access at all. Requests from the
+    // same origin (like Swagger UI) and non-browser clients (curl, other
+    // servers) are not affected either way.
+    //
+    // Credentials (cookies) are not allowed: authentication is a bearer token
+    // in the Authorization header, so cookies are never needed.
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource(
+            @Value("${app.cors.allowed-origins:}") String allowedOrigins) {
+
+        List<String> origins = Arrays.stream(allowedOrigins.split(","))
+                .map(String::trim)
+                .filter(origin -> !origin.isEmpty())
+                .toList();
+
+        CorsConfiguration configuration = new CorsConfiguration();
+        configuration.setAllowedOrigins(origins);
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS"));
+        configuration.setAllowedHeaders(List.of("Authorization", "Content-Type", "X-Request-Id"));
+        configuration.setExposedHeaders(List.of("X-Request-Id"));
+        configuration.setAllowCredentials(false);
+        configuration.setMaxAge(3600L);
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
     }
 
 

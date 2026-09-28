@@ -48,6 +48,8 @@ The Student Management System is a backend application designed to manage studen
 | JaCoCo | Test coverage reporting |
 | Maven | Build Tool |
 | Docker | Containerization |
+| Micrometer + Prometheus | Metrics (JVM, HTTP, database pool, and student/course/enrollment counts) |
+| GitHub Actions + Dependabot | CI on every push; weekly pull requests for outdated or vulnerable dependencies |
 | Git & GitHub | Version Control |
 
 ## 🏗️ System Architecture
@@ -207,6 +209,31 @@ The application reads the following from the environment:
 | `JWT_REFRESH_TOKEN_EXPIRATION_MS` | Refresh token lifetime in ms (defaults to `604800000`, 7 days) |
 | `REDIS_HOST` | Redis host for caching (defaults to `localhost`) |
 | `REDIS_PORT` | Redis port for caching (defaults to `6379`) |
+| `SPRING_PROFILES_ACTIVE` | `dev` (default) or `prod` - see [Profiles](#profiles) |
+| `SWAGGER_ENABLED` | Only used by the `prod` profile: `true` turns Swagger UI and `/v3/api-docs` on (defaults to `false`) |
+| `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API from another site (defaults to `http://localhost:3000,http://localhost:5173`) |
+
+### Profiles
+
+| Profile | Chosen by | Behavior |
+|---|---|---|
+| `dev` | default (nothing set) | Readable, formatted SQL logging |
+| `prod` | `SPRING_PROFILES_ACTIVE=prod` (Docker Compose sets this) | No SQL echo, one JSON log object per line, graceful shutdown, Swagger off unless `SWAGGER_ENABLED=true` |
+| `test` | automated tests | Throwaway Testcontainers database, caching off |
+
+Docker Compose turns Swagger back on so the demo stack is easy to try. For anything reachable from the internet, set `SWAGGER_ENABLED=false`.
+
+### Request IDs and logging
+
+Every response carries an `X-Request-Id` header, and the same ID is on every log line that request produced, so one quoted ID finds the exact request in the logs. A caller (or load balancer) may send its own `X-Request-Id`, but it is only reused if it is at most 64 characters of letters, digits, `.`, `_` or `-`; anything else is replaced with a generated one, so a crafted header cannot inject fake log lines. Rejected requests (401/403/429) get an ID too.
+
+### Metrics
+
+`GET /actuator/prometheus` exposes metrics in Prometheus format: JVM, HTTP, database pool, plus `sms_students`, `sms_courses` and `sms_enrollments`. It **requires an ADMIN token**, because metrics reveal internals. `/actuator/health` and `/actuator/info` stay public.
+
+### CORS
+
+A browser frontend on another origin can call the API only if its origin is listed in `CORS_ALLOWED_ORIGINS`. There are no wildcards and cookies are not allowed (authentication is a bearer token). Requests from Swagger UI and from tools like curl are not affected.
 
 ### Creating the first admin
 
@@ -252,8 +279,9 @@ cp .env.example .env
 docker compose up --build
 ```
 
-The app is then at `http://localhost:9090`, and MySQL is reachable from your
-own machine (e.g. Workbench) at `localhost:3307`, same as running locally.
+This runs the `prod` profile, with Redis for caching. The app is then at
+`http://localhost:9090`, and MySQL is reachable from your own machine (e.g.
+Workbench) at `localhost:3307`, same as running locally.
 `docker compose down` stops it; add `-v` to also delete the database volume.
 
 ### Run with plain Docker

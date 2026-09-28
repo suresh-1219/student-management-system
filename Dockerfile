@@ -7,7 +7,10 @@ WORKDIR /src
 # re-downloads them when the pom actually changes.
 COPY mvnw pom.xml ./
 COPY .mvn .mvn
-RUN ./mvnw -q -B dependency:go-offline
+# Git does not keep the Unix executable bit on mvnw when it is committed from
+# Windows, so building this image on Linux (CI, a server) would fail with
+# "Permission denied" without this.
+RUN chmod +x mvnw && ./mvnw -q -B dependency:go-offline
 
 COPY src src
 RUN ./mvnw -q -B -DskipTests package
