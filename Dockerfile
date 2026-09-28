@@ -1,5 +1,5 @@
 # ---- Build stage: compiles the jar. Nothing from this stage ships. ----
-FROM eclipse-temurin:21-jdk AS build
+FROM eclipse-temurin:24-jdk AS build
 
 WORKDIR /src
 
@@ -16,7 +16,7 @@ COPY src src
 RUN ./mvnw -q -B -DskipTests package
 
 # ---- Run stage: just a JRE and the jar, running as a non-root user. ----
-FROM eclipse-temurin:21-jre
+FROM eclipse-temurin:24-jre
 
 # curl is needed for HEALTHCHECK below; the base image does not include it.
 RUN apt-get update \
