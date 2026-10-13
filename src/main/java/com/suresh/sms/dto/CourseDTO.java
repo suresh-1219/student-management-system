@@ -18,6 +18,14 @@ public class CourseDTO {
     @Positive(message = "Capacity must be greater than zero")
     private Integer capacity;
 
+    // Output-only: populated by CourseService from the course's assigned
+    // teacher, never read from the request body. Assigning a teacher is a
+    // dedicated action (PUT /courses/{id}/teacher, via AssignTeacherRequest),
+    // not part of this DTO's own create/update, so a stray value sent here
+    // is simply ignored rather than silently changing the assignment.
+    private Long teacherId;
+    private String teacherName;
+
     public CourseDTO() {
     }
 
@@ -58,5 +66,21 @@ public class CourseDTO {
 
     public void setCapacity(Integer capacity) {
         this.capacity = capacity;
+    }
+
+    public Long getTeacherId() {
+        return teacherId;
+    }
+
+    public void setTeacherId(Long teacherId) {
+        this.teacherId = teacherId;
+    }
+
+    public String getTeacherName() {
+        return teacherName;
+    }
+
+    public void setTeacherName(String teacherName) {
+        this.teacherName = teacherName;
     }
 }

@@ -6,14 +6,18 @@ import java.util.stream.Collectors;
 import org.modelmapper.ModelMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.suresh.sms.dto.CourseDTO;
 import com.suresh.sms.entity.Course;
+import com.suresh.sms.entity.Teacher;
 import com.suresh.sms.exception.CourseHasEnrollmentsException;
 import com.suresh.sms.exception.CourseNotFoundException;
 import com.suresh.sms.exception.DuplicateCourseException;
+import com.suresh.sms.exception.TeacherNotFoundException;
 import com.suresh.sms.repository.CourseRepository;
 import com.suresh.sms.repository.EnrollmentRepository;
+import com.suresh.sms.repository.TeacherRepository;
 
 @Service
 public class CourseService {
@@ -27,6 +31,10 @@ public class CourseService {
     @Autowired
     private EnrollmentRepository enrollmentRepository;
 
+    @Autowired
+    private TeacherRepository teacherRepository;
+
+    @Transactional(readOnly = true)
     public List<CourseDTO> getAllCourses() {
 
         return repository.findAll()
@@ -35,6 +43,7 @@ public class CourseService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public CourseDTO getCourseById(Long id) {
 
         Course course = repository.findById(id)
@@ -58,6 +67,13 @@ public class CourseService {
         return convertToDTO(saved);
     }
 
+    /**
+     * {@code @Transactional}: {@code convertToDTO} below navigates the
+     * course's (possibly already-assigned) lazy {@code teacher} - see the
+     * comment on {@code convertToDTO} for why that must happen inside this
+     * method's own transaction, not after it returns.
+     */
+    @Transactional
     public CourseDTO updateCourse(Long id, CourseDTO dto) {
 
         Course existing = repository.findById(id)
@@ -78,6 +94,34 @@ public class CourseService {
         return convertToDTO(updated);
     }
 
+    /**
+     * Assigns (or, with a {@code null} id, unassigns) a course's teacher.
+     *
+     * <p>A dedicated endpoint rather than part of {@link #updateCourse}, so
+     * an ordinary "edit the title" request can never accidentally clear or
+     * change the assignment - the client has to mean it.
+     */
+    @Transactional
+    public CourseDTO assignTeacher(Long courseId, Long teacherId) {
+
+        Course course = repository.findById(courseId)
+                .orElseThrow(() ->
+                        new CourseNotFoundException("Course not found with id : " + courseId));
+
+        if (teacherId == null) {
+            course.setTeacher(null);
+        } else {
+            Teacher teacher = teacherRepository.findById(teacherId)
+                    .orElseThrow(() -> new TeacherNotFoundException(
+                            "Teacher not found with id : " + teacherId));
+            course.setTeacher(teacher);
+        }
+
+        Course updated = repository.save(course);
+
+        return convertToDTO(updated);
+    }
+
     public void deleteCourse(Long id) {
 
         Course existing = repository.findById(id)
@@ -93,8 +137,26 @@ public class CourseService {
         repository.delete(existing);
     }
 
+    /**
+     * Mapped by hand, not left to ModelMapper's implicit nested-property
+     * matching: {@code teacher} is a lazy association, and with
+     * {@code spring.jpa.open-in-view=false} it can only be safely navigated
+     * inside this method's own transaction (see the {@code @Transactional}
+     * annotations above) - not later, by a mapping library reflecting over
+     * the entity after the session has already closed.
+     */
     private CourseDTO convertToDTO(Course course) {
-        return modelMapper.map(course, CourseDTO.class);
+
+        CourseDTO dto = modelMapper.map(course, CourseDTO.class);
+
+        Teacher teacher = course.getTeacher();
+
+        if (teacher != null) {
+            dto.setTeacherId(teacher.getId());
+            dto.setTeacherName(teacher.getName());
+        }
+
+        return dto;
     }
 
     private Course convertToEntity(CourseDTO dto) {

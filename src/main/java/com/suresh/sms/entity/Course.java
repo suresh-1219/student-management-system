@@ -5,9 +5,12 @@ import java.time.LocalDateTime;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.Version;
 
@@ -37,6 +40,14 @@ public class Course {
     @NotNull(message = "Capacity is required")
     @Positive(message = "Capacity must be greater than zero")
     private Integer capacity;
+
+    // Nullable on purpose: a course can exist, and students can enroll in
+    // it, before any teacher is assigned. Assigned via a dedicated endpoint
+    // (see CourseController#assignTeacher), not the general update, so it
+    // isn't accidentally cleared by an unrelated PUT /courses/{id}.
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "teacher_id")
+    private Teacher teacher;
 
     @Version
     private Long version;
@@ -89,6 +100,14 @@ public class Course {
 
     public void setCapacity(Integer capacity) {
         this.capacity = capacity;
+    }
+
+    public Teacher getTeacher() {
+        return teacher;
+    }
+
+    public void setTeacher(Teacher teacher) {
+        this.teacher = teacher;
     }
 
     public Long getVersion() {

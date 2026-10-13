@@ -9,6 +9,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import com.suresh.sms.dto.ApiResponse;
+import com.suresh.sms.dto.AssignTeacherRequest;
 import com.suresh.sms.dto.CourseDTO;
 import com.suresh.sms.service.CourseService;
 
@@ -72,6 +73,20 @@ public class CourseController {
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Course updated successfully", updated));
+    }
+
+
+    // ASSIGN (OR, WITH A NULL teacherId, UNASSIGN) THE COURSE'S TEACHER
+
+    @PutMapping("/{id}/teacher")
+    public ResponseEntity<ApiResponse<CourseDTO>> assignTeacher(
+            @PathVariable Long id,
+            @RequestBody AssignTeacherRequest request) {
+
+        CourseDTO updated = service.assignTeacher(id, request.teacherId());
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Teacher assignment updated successfully", updated));
     }
 
 

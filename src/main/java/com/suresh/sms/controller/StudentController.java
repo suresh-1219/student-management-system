@@ -14,7 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import com.suresh.sms.dto.ApiResponse;
 import com.suresh.sms.dto.PageResponse;
 import com.suresh.sms.dto.StudentDTO;
+import com.suresh.sms.dto.StudentReportDTO;
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.service.StudentReportService;
 import com.suresh.sms.service.StudentService;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -27,6 +29,23 @@ public class StudentController {
 
     @Autowired
     private StudentService service;
+
+    @Autowired
+    private StudentReportService reportService;
+
+
+    // PER-STUDENT REPORT: every enrolled course, with its grade (if any)
+    // and an attendance summary
+
+    @GetMapping("/{id}/report")
+    public ResponseEntity<ApiResponse<StudentReportDTO>> getStudentReport(
+            @PathVariable Long id) {
+
+        StudentReportDTO report = reportService.getReportForStudent(id);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Report retrieved successfully", report));
+    }
 
 
    

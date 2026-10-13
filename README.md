@@ -11,6 +11,7 @@ The Student Management System is a backend application designed to manage studen
 - JWT-based authentication with stateless session management
 - Role-based access control (USER, ADMIN)
 - Student management with full CRUD operations
+- Course, teacher, enrollment, grade and attendance management, plus a per-student report combining all of them
 - Search, sorting, and pagination support
 - MySQL database integration
 - Spring Data JPA and Hibernate
@@ -164,6 +165,29 @@ A student's `course` field (e.g. `"MCA"`) is a free-text label kept for backward
 | DELETE | `/enrollments/{id}` | ADMIN | Unenroll (by the enrollment's own ID) |
 
 **Course codes are unique**, and **a student cannot be enrolled in the same course twice** - both return `409`. **A course cannot be deleted while it still has enrollments** - unenroll every student first, also `409`. **Enrolling into a full course** (enrollment count has reached its capacity) returns `409`. That last check takes a row lock on the course for the duration of the enrollment, so two requests racing for the last seat are handled one after another rather than both slipping through on stale data.
+
+### Teachers, grades and attendance
+
+Every course can optionally have a `Teacher` assigned. Each `Enrollment` can have one `Grade` (a score out of 100) and any number of daily `AttendanceRecord`s; a per-student report pulls all of this together.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/teachers` | USER, ADMIN | List all teachers |
+| GET | `/teachers/{id}` | USER, ADMIN | Get a teacher by ID |
+| POST | `/teachers` | ADMIN | Create a teacher (`name`, `email`, `department`) |
+| PUT | `/teachers/{id}` | ADMIN | Update a teacher |
+| DELETE | `/teachers/{id}` | ADMIN | Delete a teacher *(fails with `409` if still assigned to a course)* |
+| PUT | `/courses/{id}/teacher` | ADMIN | Assign a course's teacher (`teacherId`); send `teacherId: null` to unassign |
+| POST | `/grades` | ADMIN | Record (or correct) the grade for one enrollment (`enrollmentId`, `score` 0-100) |
+| GET | `/grades/enrollment/{enrollmentId}` | USER, ADMIN | Get the grade for one enrollment (`data` is `null` if not graded yet) |
+| GET | `/grades/student/{studentId}` | USER, ADMIN | List a student's grades across all their courses |
+| POST | `/attendance` | ADMIN | Record (or correct) one day's attendance for one enrollment (`enrollmentId`, `date`, `status`: `PRESENT`, `ABSENT`, `LATE` or `EXCUSED`) |
+| GET | `/attendance/enrollment/{enrollmentId}` | USER, ADMIN | List one enrollment's attendance history, oldest first |
+| GET | `/students/{id}/report` | USER, ADMIN | Per-student report: every enrolled course with its grade (if any) and an attendance summary |
+
+**A teacher's email is unique**, and **a teacher cannot be deleted while still assigned to a course** - unassign them first (`PUT .../teacher` with `teacherId: null`), also `409`. Assigning a teacher is a dedicated endpoint rather than part of the general course update, so an ordinary edit can never accidentally clear or change the assignment.
+
+Recording a grade or an attendance entry a second time for the same enrollment (and, for attendance, the same day) **corrects the existing record instead of creating a duplicate** - a student has at most one grade per course and at most one attendance record per course per day. In the per-student report, a course's `grade` is `null` when none has been recorded yet, and `attendancePercentage` is `null` when there are zero attendance records (as opposed to `0`, which means attendance was recorded and the student was present on none of those days).
 
 ### Error responses
 

@@ -18,6 +18,8 @@ public interface CourseRepository extends JpaRepository<Course, Long> {
     /** True if a DIFFERENT course (other id) already uses this code. */
     boolean existsByCodeAndIdNot(String code, Long id);
 
+    boolean existsByTeacher_Id(Long teacherId);
+
     /**
      * Same lookup as {@link #findById}, but takes a row lock (SELECT ... FOR
      * UPDATE) that is held until the enclosing transaction commits.

@@ -20,11 +20,14 @@ import org.modelmapper.ModelMapper;
 
 import com.suresh.sms.dto.CourseDTO;
 import com.suresh.sms.entity.Course;
+import com.suresh.sms.entity.Teacher;
 import com.suresh.sms.exception.CourseHasEnrollmentsException;
 import com.suresh.sms.exception.CourseNotFoundException;
 import com.suresh.sms.exception.DuplicateCourseException;
+import com.suresh.sms.exception.TeacherNotFoundException;
 import com.suresh.sms.repository.CourseRepository;
 import com.suresh.sms.repository.EnrollmentRepository;
+import com.suresh.sms.repository.TeacherRepository;
 
 @ExtendWith(MockitoExtension.class)
 class CourseServiceTest {
@@ -34,6 +37,9 @@ class CourseServiceTest {
 
     @Mock
     private EnrollmentRepository enrollmentRepository;
+
+    @Mock
+    private TeacherRepository teacherRepository;
 
     @Mock
     private ModelMapper modelMapper;
@@ -75,6 +81,46 @@ class CourseServiceTest {
         assertThrows(
                 CourseNotFoundException.class,
                 () -> courseService.getCourseById(99L));
+    }
+
+    @Test
+    void testGetCourseByIdPopulatesTeacherFieldsWhenAssigned() {
+
+        // Regression test for the lazy-loading fix: convertToDTO must read
+        // the teacher explicitly (course.getTeacher()) rather than relying
+        // on ModelMapper's implicit nested-property mapping, which would
+        // risk a LazyInitializationException outside a transaction with
+        // spring.jpa.open-in-view=false. This confirms the DTO actually
+        // ends up carrying teacherId/teacherName once that wiring is in
+        // place; see CourseServiceIT for the real Hibernate-proxy case.
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        Teacher teacher = new Teacher(5L, "Dr. Rao", "rao@school.edu", "Mathematics");
+        existing.setTeacher(teacher);
+
+        CourseDTO mapped = dto(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(modelMapper.map(existing, CourseDTO.class)).thenReturn(mapped);
+
+        CourseDTO result = courseService.getCourseById(1L);
+
+        assertEquals(5L, result.getTeacherId());
+        assertEquals("Dr. Rao", result.getTeacherName());
+    }
+
+    @Test
+    void testGetCourseByIdLeavesTeacherFieldsNullWhenUnassigned() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        CourseDTO mapped = dto(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(modelMapper.map(existing, CourseDTO.class)).thenReturn(mapped);
+
+        CourseDTO result = courseService.getCourseById(1L);
+
+        assertEquals(null, result.getTeacherId());
+        assertEquals(null, result.getTeacherName());
     }
 
 
@@ -171,5 +217,72 @@ class CourseServiceTest {
         courseService.deleteCourse(1L);
 
         verify(repository).delete(existing);
+    }
+
+
+    // ASSIGN TEACHER
+
+    @Test
+    void testAssignTeacherCourseNotFound() {
+
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                CourseNotFoundException.class,
+                () -> courseService.assignTeacher(99L, 5L));
+    }
+
+    @Test
+    void testAssignTeacherRejectsUnknownTeacher() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(teacherRepository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                TeacherNotFoundException.class,
+                () -> courseService.assignTeacher(1L, 99L));
+
+        verify(repository, never()).save(any(Course.class));
+    }
+
+    @Test
+    void testAssignTeacherSuccess() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        Teacher teacher = new Teacher(5L, "Dr. Rao", "rao@school.edu", "Mathematics");
+        CourseDTO mapped = dto(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(teacherRepository.findById(5L)).thenReturn(Optional.of(teacher));
+        when(repository.save(existing)).thenReturn(existing);
+        when(modelMapper.map(existing, CourseDTO.class)).thenReturn(mapped);
+
+        CourseDTO result = courseService.assignTeacher(1L, 5L);
+
+        assertEquals(teacher, existing.getTeacher());
+        assertEquals(5L, result.getTeacherId());
+        assertEquals("Dr. Rao", result.getTeacherName());
+    }
+
+    @Test
+    void testAssignTeacherWithNullIdUnassigns() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        existing.setTeacher(new Teacher(5L, "Dr. Rao", "rao@school.edu", "Mathematics"));
+        CourseDTO mapped = dto(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+        when(modelMapper.map(existing, CourseDTO.class)).thenReturn(mapped);
+
+        CourseDTO result = courseService.assignTeacher(1L, null);
+
+        assertEquals(null, existing.getTeacher());
+        assertEquals(null, result.getTeacherId());
+        assertEquals(null, result.getTeacherName());
+
+        verify(teacherRepository, never()).findById(any());
     }
 }

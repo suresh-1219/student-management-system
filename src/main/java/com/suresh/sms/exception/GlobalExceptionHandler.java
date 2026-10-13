@@ -135,6 +135,27 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.CONFLICT, ex.getMessage());
     }
 
+    @ExceptionHandler(TeacherNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleTeacherNotFound(
+            TeacherNotFoundException ex) {
+
+        return response(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(DuplicateTeacherException.class)
+    public ResponseEntity<Map<String, Object>> handleDuplicateTeacherException(
+            DuplicateTeacherException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
+    @ExceptionHandler(TeacherHasCoursesException.class)
+    public ResponseEntity<Map<String, Object>> handleTeacherHasCourses(
+            TeacherHasCoursesException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
     @ExceptionHandler(InvalidRequestException.class)
     public ResponseEntity<Map<String, Object>> handleInvalidRequest(
             InvalidRequestException ex) {
