@@ -11,7 +11,9 @@ import com.suresh.sms.dto.AttendanceRequest;
 import com.suresh.sms.dto.AttendanceResponseDTO;
 import com.suresh.sms.entity.AttendanceRecord;
 import com.suresh.sms.entity.Enrollment;
+import com.suresh.sms.event.AttendanceRecordedEvent;
 import com.suresh.sms.exception.EnrollmentNotFoundException;
+import com.suresh.sms.messaging.EventPublisher;
 import com.suresh.sms.repository.AttendanceRecordRepository;
 import com.suresh.sms.repository.EnrollmentRepository;
 
@@ -23,6 +25,9 @@ public class AttendanceService {
 
     @Autowired
     private EnrollmentRepository enrollmentRepository;
+
+    @Autowired
+    private EventPublisher eventPublisher;
 
     /**
      * Records one enrollment's attendance status for one day, or corrects
@@ -46,7 +51,16 @@ public class AttendanceService {
 
         AttendanceRecord saved = repository.save(record);
 
-        return convertToDTO(saved);
+        AttendanceResponseDTO dto = convertToDTO(saved);
+
+        // See the equivalent comment in GradeService.recordGrade: published
+        // before commit, a deliberate simplification since this only drives
+        // a best-effort Notification row.
+        eventPublisher.publishAttendanceRecorded(new AttendanceRecordedEvent(
+                dto.id(), dto.enrollmentId(), dto.studentId(), enrollment.getStudent().getName(),
+                dto.courseId(), dto.courseTitle(), dto.date(), dto.status(), saved.getUpdatedAt()));
+
+        return dto;
     }
 
     @Transactional(readOnly = true)

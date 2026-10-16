@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -23,7 +24,9 @@ import com.suresh.sms.entity.Course;
 import com.suresh.sms.entity.Enrollment;
 import com.suresh.sms.entity.Grade;
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.event.GradeRecordedEvent;
 import com.suresh.sms.exception.EnrollmentNotFoundException;
+import com.suresh.sms.messaging.EventPublisher;
 import com.suresh.sms.repository.EnrollmentRepository;
 import com.suresh.sms.repository.GradeRepository;
 
@@ -35,6 +38,9 @@ class GradeServiceTest {
 
     @Mock
     private EnrollmentRepository enrollmentRepository;
+
+    @Mock
+    private EventPublisher eventPublisher;
 
     @InjectMocks
     private GradeService gradeService;
@@ -81,6 +87,8 @@ class GradeServiceTest {
         assertEquals("Asha", result.studentName());
         assertEquals(20L, result.courseId());
         assertEquals(new BigDecimal("85.00"), result.score());
+
+        verify(eventPublisher).publishGradeRecorded(any(GradeRecordedEvent.class));
     }
 
     @Test

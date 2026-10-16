@@ -161,13 +161,15 @@ public class SecurityConfig {
                     "/enrollments/**"
                 ).hasRole("ADMIN")
 
-                // USER + ADMIN can READ teachers, grades and attendance
-                // (student reports ride the existing GET /students/** rule above)
+                // USER + ADMIN can READ teachers, grades, attendance and
+                // notifications (student reports ride the existing GET
+                // /students/** rule above)
                 .requestMatchers(
                     HttpMethod.GET,
                     "/teachers/**",
                     "/grades/**",
-                    "/attendance/**"
+                    "/attendance/**",
+                    "/notifications/**"
                 ).hasAnyRole("USER", "ADMIN")
 
                 // ADMIN only - manage teachers (create, update, delete) and

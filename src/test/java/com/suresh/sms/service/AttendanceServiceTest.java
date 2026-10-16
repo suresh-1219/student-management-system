@@ -3,6 +3,7 @@ package com.suresh.sms.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.math.BigDecimal;
@@ -24,7 +25,9 @@ import com.suresh.sms.entity.AttendanceStatus;
 import com.suresh.sms.entity.Course;
 import com.suresh.sms.entity.Enrollment;
 import com.suresh.sms.entity.Student;
+import com.suresh.sms.event.AttendanceRecordedEvent;
 import com.suresh.sms.exception.EnrollmentNotFoundException;
+import com.suresh.sms.messaging.EventPublisher;
 import com.suresh.sms.repository.AttendanceRecordRepository;
 import com.suresh.sms.repository.EnrollmentRepository;
 
@@ -36,6 +39,9 @@ class AttendanceServiceTest {
 
     @Mock
     private EnrollmentRepository enrollmentRepository;
+
+    @Mock
+    private EventPublisher eventPublisher;
 
     @InjectMocks
     private AttendanceService attendanceService;
@@ -84,6 +90,8 @@ class AttendanceServiceTest {
         assertEquals(10L, result.studentId());
         assertEquals(20L, result.courseId());
         assertEquals(AttendanceStatus.PRESENT, result.status());
+
+        verify(eventPublisher).publishAttendanceRecorded(any(AttendanceRecordedEvent.class));
     }
 
     @Test

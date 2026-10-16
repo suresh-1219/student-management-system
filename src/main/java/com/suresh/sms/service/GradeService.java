@@ -11,7 +11,9 @@ import com.suresh.sms.dto.GradeRequest;
 import com.suresh.sms.dto.GradeResponseDTO;
 import com.suresh.sms.entity.Enrollment;
 import com.suresh.sms.entity.Grade;
+import com.suresh.sms.event.GradeRecordedEvent;
 import com.suresh.sms.exception.EnrollmentNotFoundException;
+import com.suresh.sms.messaging.EventPublisher;
 import com.suresh.sms.repository.EnrollmentRepository;
 import com.suresh.sms.repository.GradeRepository;
 
@@ -23,6 +25,9 @@ public class GradeService {
 
     @Autowired
     private EnrollmentRepository enrollmentRepository;
+
+    @Autowired
+    private EventPublisher eventPublisher;
 
     /**
      * Records a student's grade for one enrollment, or corrects it if one
@@ -43,7 +48,18 @@ public class GradeService {
 
         Grade saved = repository.save(grade);
 
-        return convertToDTO(saved);
+        GradeResponseDTO dto = convertToDTO(saved);
+
+        // Published before this transaction commits: a known simplification
+        // (the "dual write" problem) rather than a transactional outbox -
+        // acceptable here because EventPublisher only drives a best-effort
+        // Notification row, not anything that must stay perfectly
+        // consistent with the grade itself.
+        eventPublisher.publishGradeRecorded(new GradeRecordedEvent(
+                dto.id(), dto.enrollmentId(), dto.studentId(), dto.studentName(),
+                dto.courseId(), dto.courseTitle(), dto.score(), dto.gradedAt()));
+
+        return dto;
     }
 
     @Transactional(readOnly = true)

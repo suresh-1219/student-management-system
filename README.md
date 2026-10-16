@@ -12,6 +12,7 @@ The Student Management System is a backend application designed to manage studen
 - Role-based access control (USER, ADMIN)
 - Student management with full CRUD operations
 - Course, teacher, enrollment, grade and attendance management, plus a per-student report combining all of them
+- Asynchronous notifications via RabbitMQ, with a dead-letter queue for failed deliveries
 - Search, sorting, and pagination support
 - MySQL database integration
 - Spring Data JPA and Hibernate
@@ -41,6 +42,7 @@ The Student Management System is a backend application designed to manage studen
 | MySQL 8 | Database |
 | Flyway | Versioned database migrations |
 | Redis | Caching (optional locally; included in `docker compose`) |
+| RabbitMQ | Async domain events -> notifications (optional locally; included in `docker compose`) |
 | JWT (jjwt) | Authentication |
 | Spring Security | Authorization |
 | ModelMapper | Entity-DTO conversion |
@@ -189,6 +191,18 @@ Every course can optionally have a `Teacher` assigned. Each `Enrollment` can hav
 
 Recording a grade or an attendance entry a second time for the same enrollment (and, for attendance, the same day) **corrects the existing record instead of creating a duplicate** - a student has at most one grade per course and at most one attendance record per course per day. In the per-student report, a course's `grade` is `null` when none has been recorded yet, and `attendancePercentage` is `null` when there are zero attendance records (as opposed to `0`, which means attendance was recorded and the student was present on none of those days).
 
+### Async notifications (RabbitMQ)
+
+Recording a grade or an attendance entry publishes a domain event (`grade.recorded` / `attendance.recorded`) to a RabbitMQ topic exchange (`sms.events.exchange`). A listener in the same app consumes these asynchronously and writes a `Notification` row for the student - decoupling "a grade was recorded" from "something happened because of it," off the request thread that did the recording.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| GET | `/notifications/student/{studentId}` | USER, ADMIN | List a student's notifications, newest first |
+
+Publishing is a best-effort side effect, not part of the write itself: if RabbitMQ is down or unreachable, recording a grade or attendance entry still succeeds - the publish failure is logged and swallowed (see `EventPublisher`), the same "degrades gracefully" treatment `CacheConfig` gives Redis. A message the listener fails to process is routed to a dead-letter queue (`sms.notifications.queue.dlq`) after one failed attempt rather than redelivered forever or silently dropped.
+
+Outside Docker Compose, the listener does not start automatically (`RABBITMQ_LISTENER_AUTOSTART=false` by default), so `mvn spring-boot:run` with no broker running still starts cleanly - notifications just will not be written until a broker is available and the listener is turned on. Docker Compose always has RabbitMQ, so it sets `RABBITMQ_LISTENER_AUTOSTART=true`. The RabbitMQ management UI is at `http://localhost:15672` (`guest`/`guest`) when running via Docker Compose.
+
 ### Error responses
 
 Every error (including 401 and 403) uses the same JSON shape:
@@ -303,9 +317,12 @@ cp .env.example .env
 docker compose up --build
 ```
 
-This runs the `prod` profile, with Redis for caching. The app is then at
-`http://localhost:9090`, and MySQL is reachable from your own machine (e.g.
-Workbench) at `localhost:3307`, same as running locally.
+This runs the `prod` profile, with Redis for caching and RabbitMQ for async
+notifications (see [Async notifications](#async-notifications-rabbitmq)).
+The app is then at `http://localhost:9090`, MySQL is reachable from your own
+machine (e.g. Workbench) at `localhost:3307`, and the RabbitMQ management UI
+is at `http://localhost:15672` (`guest`/`guest`) - all same as running
+locally.
 `docker compose down` stops it; add `-v` to also delete the database volume.
 
 ### Run with plain Docker
