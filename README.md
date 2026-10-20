@@ -14,6 +14,7 @@ The Student Management System is a backend application designed to manage studen
 - Course, teacher, enrollment, grade and attendance management, plus a per-student report combining all of them
 - Asynchronous notifications via RabbitMQ, with a dead-letter queue for failed deliveries
 - Course syllabus file upload/download/delete, backed by S3-compatible object storage (SeaweedFS)
+- CSV report export (all students) as an async Spring Batch job, with the result uploaded to object storage and a presigned download link
 - Search, sorting, and pagination support
 - MySQL database integration
 - Spring Data JPA and Hibernate
@@ -26,7 +27,7 @@ The Student Management System is a backend application designed to manage studen
 
 ## ✅ Testing
 
-- 146+ unit, controller, and integration tests written using JUnit 5 and Mockito
+- 290+ unit, controller, and integration tests written using JUnit 5 and Mockito
 - Verified via JaCoCo (see `target/site/jacoco/index.html` after running tests)
 - Covers the service layer, controllers, JWT filter/util, DTOs, entities, exception handling, database migrations and repository queries
 - Database-backed tests run against a real, throwaway MySQL container via [Testcontainers](https://testcontainers.com/) - **Docker must be running**, but no local MySQL, `JWT_SECRET` or `DB_PASSWORD` is needed to run `mvn test`
@@ -44,7 +45,8 @@ The Student Management System is a backend application designed to manage studen
 | Flyway | Versioned database migrations |
 | Redis | Caching (optional locally; included in `docker compose`) |
 | RabbitMQ | Async domain events -> notifications (optional locally; included in `docker compose`) |
-| SeaweedFS | S3-compatible object storage for course syllabus files (included in `docker compose`) |
+| SeaweedFS | S3-compatible object storage for course syllabus files and CSV report exports (included in `docker compose`) |
+| Spring Batch | Chunk-oriented CSV report export, run as an async job rather than inline in a request |
 | JWT (jjwt) | Authentication |
 | Spring Security | Authorization |
 | ModelMapper | Entity-DTO conversion |
@@ -220,6 +222,20 @@ Unlike Redis and RabbitMQ above, the object store is **not** treated as an optio
 
 The bucket (`course-syllabi` by default) is created automatically on startup if it doesn't already exist. SeaweedFS has no MinIO-style web console, so there's no UI to browse it with - only the API endpoints above.
 
+### CSV report export (Spring Batch)
+
+`POST /reports/students/export` kicks off an export of every student (id, name, email, course, fee, created-at) as a CSV file, run as a [Spring Batch](https://spring.io/projects/spring-batch) job rather than built in the request thread - the request returns immediately (`202 Accepted`, status `PENDING`) instead of blocking for however long the export takes.
+
+| Method | Endpoint | Access | Description |
+|---|---|---|---|
+| POST | `/reports/students/export` | ADMIN | Start a student CSV export; returns immediately with status `PENDING` |
+| GET | `/reports/exports/{id}` | ADMIN | Poll an export's status (`PENDING` -> `RUNNING` -> `COMPLETED`/`FAILED`) |
+| GET | `/reports/exports/{id}/download` | ADMIN | Get a short-lived presigned download URL for a `COMPLETED` export |
+
+The job reads students from the database a page at a time (so memory use stays flat regardless of table size) and writes them straight to a local CSV file; once the job finishes, a listener uploads that file to the same S3-compatible object store the course syllabus feature uses and deletes the local copy - clients never download through this app's own disk. Polling `GET /reports/exports/{id}/download` before the export has finished returns `409 Conflict`, not a broken link.
+
+Export requests are ADMIN-only throughout (unlike most other `GET`s in this API): a student export is a bulk dump of everyone's name, email and fee, not a single record a USER has a legitimate reason to read.
+
 ### Error responses
 
 Every error (including 401 and 403) uses the same JSON shape:
@@ -268,7 +284,8 @@ The application reads the following from the environment:
 | `S3_ACCESS_KEY` | S3 access key (defaults to `course-syllabi-app`) |
 | `S3_SECRET_KEY` | S3 secret key (defaults to `change-me-course-syllabi-secret`) |
 | `S3_BUCKET` | S3 bucket for syllabus files, created automatically if missing (defaults to `course-syllabi`) |
-| `S3_PRESIGNED_URL_EXPIRY_SECONDS` | How long a syllabus download URL stays valid (defaults to `600`, 10 minutes) |
+| `S3_PRESIGNED_URL_EXPIRY_SECONDS` | How long a syllabus (or report export) download URL stays valid (defaults to `600`, 10 minutes) |
+| `REPORTS_EXPORT_DIR` | Local scratch directory a CSV report is staged in before upload (defaults to the JVM's own temp directory) |
 | `SPRING_PROFILES_ACTIVE` | `dev` (default) or `prod` - see [Profiles](#profiles) |
 | `SWAGGER_ENABLED` | Only used by the `prod` profile: `true` turns Swagger UI and `/v3/api-docs` on (defaults to `false`) |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API from another site (defaults to `http://localhost:3000,http://localhost:5173`) |

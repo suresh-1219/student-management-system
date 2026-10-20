@@ -67,6 +67,16 @@
 			<groupId>org.springframework.boot</groupId>
 			<artifactId>spring-boot-starter-amqp</artifactId>
 		</dependency>
+		<!-- Drop G3: chunk-oriented CSV report export, run as a Spring Batch
+		     job rather than inline in a request thread (see
+		     StudentExportBatchConfig). Its job-repository metadata tables
+		     (BATCH_JOB_INSTANCE etc.) are created by Flyway, same as every
+		     other table - see V9__report_exports.sql - not by Spring Batch's
+		     own auto-initializer (spring.batch.jdbc.initialize-schema=never). -->
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-batch</artifactId>
+		</dependency>
 
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
@@ -111,6 +121,14 @@
 <dependency>
     <groupId>org.testcontainers</groupId>
     <artifactId>mysql</artifactId>
+    <scope>test</scope>
+</dependency>
+<!-- JobLauncherTestUtils, used by ReportExportBatchIntegrationTest to drive
+     the real batch job end-to-end without going through HTTP/JobLauncher
+     async plumbing. -->
+<dependency>
+    <groupId>org.springframework.batch</groupId>
+    <artifactId>spring-batch-test</artifactId>
     <scope>test</scope>
 </dependency>
 

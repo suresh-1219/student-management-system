@@ -182,6 +182,20 @@ public class GlobalExceptionHandler {
                 "File storage is currently unavailable. Please try again shortly.");
     }
 
+    @ExceptionHandler(ReportExportNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleReportExportNotFound(
+            ReportExportNotFoundException ex) {
+
+        return response(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(ReportExportNotReadyException.class)
+    public ResponseEntity<Map<String, Object>> handleReportExportNotReady(
+            ReportExportNotReadyException ex) {
+
+        return response(HttpStatus.CONFLICT, ex.getMessage());
+    }
+
 
     // ---------------------------------------------------------------
     // Validation

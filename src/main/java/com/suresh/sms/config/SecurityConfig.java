@@ -191,6 +191,11 @@ public class SecurityConfig {
                     "/teachers/**"
                 ).hasRole("ADMIN")
 
+                // ADMIN only, every method - a student CSV export is a bulk
+                // dump of everyone's data, unlike the single-record GETs
+                // above that USER can also read (see ReportController).
+                .requestMatchers("/reports/**").hasRole("ADMIN")
+
                 // Everything else
                 .anyRequest().authenticated()
             )
