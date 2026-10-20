@@ -7,10 +7,12 @@ import jakarta.validation.Valid;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import com.suresh.sms.dto.ApiResponse;
 import com.suresh.sms.dto.AssignTeacherRequest;
 import com.suresh.sms.dto.CourseDTO;
+import com.suresh.sms.dto.SyllabusDTO;
 import com.suresh.sms.service.CourseService;
 
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -100,5 +102,45 @@ public class CourseController {
 
         return ResponseEntity.ok(
                 new ApiResponse<>(true, "Course deleted successfully", null));
+    }
+
+
+    // SYLLABUS (file attachment; see StorageService)
+
+    // ADMIN only - rides the existing POST /courses/** rule in
+    // SecurityConfig, same as saveCourse above.
+    @PostMapping("/{id}/syllabus")
+    public ResponseEntity<ApiResponse<CourseDTO>> uploadSyllabus(
+            @PathVariable Long id,
+            @RequestParam("file") MultipartFile file) {
+
+        CourseDTO updated = service.uploadSyllabus(id, file);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Syllabus uploaded successfully", updated));
+    }
+
+    // USER + ADMIN can read - rides the existing GET /courses/** rule.
+    // Returns a short-lived presigned URL rather than streaming the file
+    // itself, so the download happens directly against the S3-compatible object store.
+    @GetMapping("/{id}/syllabus")
+    public ResponseEntity<ApiResponse<SyllabusDTO>> getSyllabus(
+            @PathVariable Long id) {
+
+        SyllabusDTO syllabus = service.getSyllabusDownload(id);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Syllabus retrieved successfully", syllabus));
+    }
+
+    // ADMIN only - rides the existing DELETE /courses/** rule.
+    @DeleteMapping("/{id}/syllabus")
+    public ResponseEntity<ApiResponse<String>> deleteSyllabus(
+            @PathVariable Long id) {
+
+        service.deleteSyllabus(id);
+
+        return ResponseEntity.ok(
+                new ApiResponse<>(true, "Syllabus deleted successfully", null));
     }
 }

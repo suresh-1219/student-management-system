@@ -49,6 +49,24 @@ public class Course {
     @JoinColumn(name = "teacher_id")
     private Teacher teacher;
 
+    // The syllabus file itself lives in S3-compatible object storage (see
+    // StorageService), not here - these four columns only record where it
+    // is and what it originally was. All null together when no syllabus
+    // has been uploaded.
+    // Set as a group by CourseService#uploadSyllabus / cleared together by
+    // #deleteSyllabus, never edited individually.
+    @Column(name = "syllabus_object_key")
+    private String syllabusObjectKey;
+
+    @Column(name = "syllabus_original_filename")
+    private String syllabusOriginalFilename;
+
+    @Column(name = "syllabus_content_type")
+    private String syllabusContentType;
+
+    @Column(name = "syllabus_size_bytes")
+    private Long syllabusSizeBytes;
+
     @Version
     private Long version;
 
@@ -108,6 +126,42 @@ public class Course {
 
     public void setTeacher(Teacher teacher) {
         this.teacher = teacher;
+    }
+
+    public String getSyllabusObjectKey() {
+        return syllabusObjectKey;
+    }
+
+    public void setSyllabusObjectKey(String syllabusObjectKey) {
+        this.syllabusObjectKey = syllabusObjectKey;
+    }
+
+    public String getSyllabusOriginalFilename() {
+        return syllabusOriginalFilename;
+    }
+
+    public void setSyllabusOriginalFilename(String syllabusOriginalFilename) {
+        this.syllabusOriginalFilename = syllabusOriginalFilename;
+    }
+
+    public String getSyllabusContentType() {
+        return syllabusContentType;
+    }
+
+    public void setSyllabusContentType(String syllabusContentType) {
+        this.syllabusContentType = syllabusContentType;
+    }
+
+    public Long getSyllabusSizeBytes() {
+        return syllabusSizeBytes;
+    }
+
+    public void setSyllabusSizeBytes(Long syllabusSizeBytes) {
+        this.syllabusSizeBytes = syllabusSizeBytes;
+    }
+
+    public boolean hasSyllabus() {
+        return syllabusObjectKey != null;
     }
 
     public Long getVersion() {

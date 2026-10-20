@@ -13,6 +13,7 @@ The Student Management System is a backend application designed to manage studen
 - Student management with full CRUD operations
 - Course, teacher, enrollment, grade and attendance management, plus a per-student report combining all of them
 - Asynchronous notifications via RabbitMQ, with a dead-letter queue for failed deliveries
+- Course syllabus file upload/download/delete, backed by S3-compatible object storage (SeaweedFS)
 - Search, sorting, and pagination support
 - MySQL database integration
 - Spring Data JPA and Hibernate
@@ -43,6 +44,7 @@ The Student Management System is a backend application designed to manage studen
 | Flyway | Versioned database migrations |
 | Redis | Caching (optional locally; included in `docker compose`) |
 | RabbitMQ | Async domain events -> notifications (optional locally; included in `docker compose`) |
+| SeaweedFS | S3-compatible object storage for course syllabus files (included in `docker compose`) |
 | JWT (jjwt) | Authentication |
 | Spring Security | Authorization |
 | ModelMapper | Entity-DTO conversion |
@@ -161,6 +163,9 @@ A student's `course` field (e.g. `"MCA"`) is a free-text label kept for backward
 | POST | `/courses` | ADMIN | Create a course (`code`, `title`, `capacity`) |
 | PUT | `/courses/{id}` | ADMIN | Update a course |
 | DELETE | `/courses/{id}` | ADMIN | Delete a course *(fails with `409` if students are still enrolled)* |
+| POST | `/courses/{id}/syllabus` | ADMIN | Upload (or replace) a course's syllabus file - PDF, Word or PowerPoint, up to 10 MB |
+| GET | `/courses/{id}/syllabus` | USER, ADMIN | Get a short-lived presigned URL to download the syllabus |
+| DELETE | `/courses/{id}/syllabus` | ADMIN | Delete a course's syllabus file |
 | GET | `/enrollments/student/{studentId}` | USER, ADMIN | List a student's enrollments |
 | GET | `/enrollments/course/{courseId}` | USER, ADMIN | List a course's enrollments |
 | POST | `/enrollments` | ADMIN | Enroll a student in a course (`studentId`, `courseId`) |
@@ -202,6 +207,18 @@ Recording a grade or an attendance entry publishes a domain event (`grade.record
 Publishing is a best-effort side effect, not part of the write itself: if RabbitMQ is down or unreachable, recording a grade or attendance entry still succeeds - the publish failure is logged and swallowed (see `EventPublisher`), the same "degrades gracefully" treatment `CacheConfig` gives Redis. A message the listener fails to process is routed to a dead-letter queue (`sms.notifications.queue.dlq`) after one failed attempt rather than redelivered forever or silently dropped.
 
 Outside Docker Compose, the listener does not start automatically (`RABBITMQ_LISTENER_AUTOSTART=false` by default), so `mvn spring-boot:run` with no broker running still starts cleanly - notifications just will not be written until a broker is available and the listener is turned on. Docker Compose always has RabbitMQ, so it sets `RABBITMQ_LISTENER_AUTOSTART=true`. The RabbitMQ management UI is at `http://localhost:15672` (`guest`/`guest`) when running via Docker Compose.
+
+### Course syllabus (S3-compatible object storage)
+
+A course can have one syllabus file attached - a PDF, Word or PowerPoint document up to 10 MB. The file's bytes live in an S3-compatible object store, not the database; `courses` only records the object key, original filename, content type and size (see `StorageService`).
+
+The backing server is [SeaweedFS](https://github.com/seaweedfs/seaweedfs)'s S3 gateway, not MinIO: this feature was originally built against MinIO, but MinIO discontinued free container images (pulled from both Docker Hub and quay.io) and its last free release has an unpatched critical CVE, so it's no longer run here. `StorageService` still talks to it through the `io.minio:minio` Java client library - that library is a generic S3-protocol client despite its name, and works against any S3-compatible endpoint, SeaweedFS included.
+
+Downloading is a redirect, not a proxy: `GET /courses/{id}/syllabus` returns a short-lived **presigned URL** (10 minutes by default) that the client downloads the file from directly, the same pattern a production app would use against real S3. Uploading a new syllabus replaces the old one - the previous object is deleted from storage first, so nothing is left orphaned.
+
+Unlike Redis and RabbitMQ above, the object store is **not** treated as an optional dependency for these three endpoints: storage is the entire point of a syllabus request, so a failure there fails that request with `502 Bad Gateway` (see `StorageException`) rather than degrading silently. It does not affect the app's overall health check, though - the rest of the API keeps working if the object store is unreachable.
+
+The bucket (`course-syllabi` by default) is created automatically on startup if it doesn't already exist. SeaweedFS has no MinIO-style web console, so there's no UI to browse it with - only the API endpoints above.
 
 ### Error responses
 
@@ -247,6 +264,11 @@ The application reads the following from the environment:
 | `JWT_REFRESH_TOKEN_EXPIRATION_MS` | Refresh token lifetime in ms (defaults to `604800000`, 7 days) |
 | `REDIS_HOST` | Redis host for caching (defaults to `localhost`) |
 | `REDIS_PORT` | Redis port for caching (defaults to `6379`) |
+| `S3_ENDPOINT` | S3-compatible endpoint for syllabus file storage (defaults to `http://localhost:8333`) |
+| `S3_ACCESS_KEY` | S3 access key (defaults to `course-syllabi-app`) |
+| `S3_SECRET_KEY` | S3 secret key (defaults to `change-me-course-syllabi-secret`) |
+| `S3_BUCKET` | S3 bucket for syllabus files, created automatically if missing (defaults to `course-syllabi`) |
+| `S3_PRESIGNED_URL_EXPIRY_SECONDS` | How long a syllabus download URL stays valid (defaults to `600`, 10 minutes) |
 | `SPRING_PROFILES_ACTIVE` | `dev` (default) or `prod` - see [Profiles](#profiles) |
 | `SWAGGER_ENABLED` | Only used by the `prod` profile: `true` turns Swagger UI and `/v3/api-docs` on (defaults to `false`) |
 | `CORS_ALLOWED_ORIGINS` | Comma-separated browser origins allowed to call the API from another site (defaults to `http://localhost:3000,http://localhost:5173`) |
@@ -317,13 +339,14 @@ cp .env.example .env
 docker compose up --build
 ```
 
-This runs the `prod` profile, with Redis for caching and RabbitMQ for async
-notifications (see [Async notifications](#async-notifications-rabbitmq)).
+This runs the `prod` profile, with Redis for caching, RabbitMQ for async
+notifications (see [Async notifications](#async-notifications-rabbitmq)) and
+SeaweedFS for course syllabus files (see [Course syllabus](#course-syllabus-s3-compatible-object-storage)).
 The app is then at `http://localhost:9090`, MySQL is reachable from your own
 machine (e.g. Workbench) at `localhost:3307`, and the RabbitMQ management UI
 is at `http://localhost:15672` (`guest`/`guest`) - all same as running
 locally.
-`docker compose down` stops it; add `-v` to also delete the database volume.
+`docker compose down` stops it; add `-v` to also delete the database and object-storage volumes.
 
 ### Run with plain Docker
 

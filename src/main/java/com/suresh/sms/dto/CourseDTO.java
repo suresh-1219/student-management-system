@@ -26,6 +26,14 @@ public class CourseDTO {
     private Long teacherId;
     private String teacherName;
 
+    // Output-only, same reasoning as teacherId/teacherName above: populated
+    // by CourseService from the course's syllabus columns, never read from
+    // the request body. The object key itself is never exposed - only
+    // CourseService/StorageService know it; the controller returns a
+    // presigned URL instead (see CourseController#getSyllabus).
+    private String syllabusFilename;
+    private Long syllabusSizeBytes;
+
     public CourseDTO() {
     }
 
@@ -82,5 +90,21 @@ public class CourseDTO {
 
     public void setTeacherName(String teacherName) {
         this.teacherName = teacherName;
+    }
+
+    public String getSyllabusFilename() {
+        return syllabusFilename;
+    }
+
+    public void setSyllabusFilename(String syllabusFilename) {
+        this.syllabusFilename = syllabusFilename;
+    }
+
+    public Long getSyllabusSizeBytes() {
+        return syllabusSizeBytes;
+    }
+
+    public void setSyllabusSizeBytes(Long syllabusSizeBytes) {
+        this.syllabusSizeBytes = syllabusSizeBytes;
     }
 }

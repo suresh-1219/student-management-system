@@ -15,6 +15,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import jakarta.validation.ConstraintViolationException;
 
@@ -163,6 +164,24 @@ public class GlobalExceptionHandler {
         return response(HttpStatus.BAD_REQUEST, ex.getMessage());
     }
 
+    @ExceptionHandler(CourseSyllabusNotFoundException.class)
+    public ResponseEntity<Map<String, Object>> handleCourseSyllabusNotFound(
+            CourseSyllabusNotFoundException ex) {
+
+        return response(HttpStatus.NOT_FOUND, ex.getMessage());
+    }
+
+    @ExceptionHandler(StorageException.class)
+    public ResponseEntity<Map<String, Object>> handleStorageException(
+            StorageException ex) {
+
+        log.error("Object storage operation failed", ex);
+
+        return response(
+                HttpStatus.BAD_GATEWAY,
+                "File storage is currently unavailable. Please try again shortly.");
+    }
+
 
     // ---------------------------------------------------------------
     // Validation
@@ -219,6 +238,15 @@ public class GlobalExceptionHandler {
         return response(
                 HttpStatus.BAD_REQUEST,
                 "Invalid value for parameter '" + ex.getName() + "'");
+    }
+
+    // Thrown by Spring itself (before reaching the controller) when an
+    // uploaded file exceeds spring.servlet.multipart.max-file-size.
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<Map<String, Object>> handleMaxUploadSizeExceeded(
+            MaxUploadSizeExceededException ex) {
+
+        return response(HttpStatus.BAD_REQUEST, "Uploaded file is too large");
     }
 
 

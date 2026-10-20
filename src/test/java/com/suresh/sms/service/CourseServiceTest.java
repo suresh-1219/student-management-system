@@ -4,6 +4,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -17,13 +20,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.modelmapper.ModelMapper;
+import org.springframework.mock.web.MockMultipartFile;
 
 import com.suresh.sms.dto.CourseDTO;
+import com.suresh.sms.dto.SyllabusDTO;
 import com.suresh.sms.entity.Course;
 import com.suresh.sms.entity.Teacher;
 import com.suresh.sms.exception.CourseHasEnrollmentsException;
 import com.suresh.sms.exception.CourseNotFoundException;
+import com.suresh.sms.exception.CourseSyllabusNotFoundException;
 import com.suresh.sms.exception.DuplicateCourseException;
+import com.suresh.sms.exception.InvalidRequestException;
 import com.suresh.sms.exception.TeacherNotFoundException;
 import com.suresh.sms.repository.CourseRepository;
 import com.suresh.sms.repository.EnrollmentRepository;
@@ -43,6 +50,9 @@ class CourseServiceTest {
 
     @Mock
     private ModelMapper modelMapper;
+
+    @Mock
+    private StorageService storageService;
 
     @InjectMocks
     private CourseService courseService;
@@ -284,5 +294,208 @@ class CourseServiceTest {
         assertEquals(null, result.getTeacherName());
 
         verify(teacherRepository, never()).findById(any());
+    }
+
+
+    // UPLOAD SYLLABUS
+
+    @Test
+    void testUploadSyllabusCourseNotFound() {
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "syllabus.pdf", "application/pdf", "content".getBytes());
+
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                CourseNotFoundException.class,
+                () -> courseService.uploadSyllabus(99L, file));
+    }
+
+    @Test
+    void testUploadSyllabusRejectsEmptyFile() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        MockMultipartFile empty = new MockMultipartFile(
+                "file", "syllabus.pdf", "application/pdf", new byte[0]);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(
+                InvalidRequestException.class,
+                () -> courseService.uploadSyllabus(1L, empty));
+
+        verify(storageService, never()).upload(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void testUploadSyllabusRejectsDisallowedContentType() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        MockMultipartFile exe = new MockMultipartFile(
+                "file", "virus.exe", "application/x-msdownload", "bad".getBytes());
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(
+                InvalidRequestException.class,
+                () -> courseService.uploadSyllabus(1L, exe));
+
+        verify(storageService, never()).upload(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void testUploadSyllabusRejectsOversizedFile() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        byte[] tooBig = new byte[11 * 1024 * 1024]; // 11 MB > the 10 MB limit
+        MockMultipartFile big = new MockMultipartFile(
+                "file", "syllabus.pdf", "application/pdf", tooBig);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(
+                InvalidRequestException.class,
+                () -> courseService.uploadSyllabus(1L, big));
+
+        verify(storageService, never()).upload(anyString(), any(), anyLong(), anyString());
+    }
+
+    @Test
+    void testUploadSyllabusSucceeds() throws Exception {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "syllabus.pdf", "application/pdf", "content".getBytes());
+        CourseDTO mapped = dto(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+        when(modelMapper.map(existing, CourseDTO.class)).thenReturn(mapped);
+
+        CourseDTO result = courseService.uploadSyllabus(1L, file);
+
+        verify(storageService).upload(anyString(), any(), eq(7L), eq("application/pdf"));
+        assertNotNull(existing.getSyllabusObjectKey());
+        assertEquals("syllabus.pdf", existing.getSyllabusOriginalFilename());
+        assertEquals("syllabus.pdf", result.getSyllabusFilename());
+        assertEquals(7L, result.getSyllabusSizeBytes());
+    }
+
+    @Test
+    void testUploadSyllabusReplacingAnExistingOneDeletesTheOldObjectFirst() throws Exception {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        existing.setSyllabusObjectKey("course-syllabi/1/old-key");
+        existing.setSyllabusOriginalFilename("old.pdf");
+        existing.setSyllabusSizeBytes(3L);
+
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "new.pdf", "application/pdf", "newcontent".getBytes());
+        CourseDTO mapped = dto(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(repository.save(existing)).thenReturn(existing);
+        when(modelMapper.map(existing, CourseDTO.class)).thenReturn(mapped);
+
+        courseService.uploadSyllabus(1L, file);
+
+        verify(storageService).delete("course-syllabi/1/old-key");
+        verify(storageService).upload(anyString(), any(), eq(10L), eq("application/pdf"));
+        assertEquals("new.pdf", existing.getSyllabusOriginalFilename());
+    }
+
+
+    // GET SYLLABUS DOWNLOAD
+
+    @Test
+    void testGetSyllabusDownloadCourseNotFound() {
+
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                CourseNotFoundException.class,
+                () -> courseService.getSyllabusDownload(99L));
+    }
+
+    @Test
+    void testGetSyllabusDownloadThrowsWhenNoneUploaded() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(
+                CourseSyllabusNotFoundException.class,
+                () -> courseService.getSyllabusDownload(1L));
+    }
+
+    @Test
+    void testGetSyllabusDownloadReturnsPresignedUrl() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        existing.setSyllabusObjectKey("course-syllabi/1/key");
+        existing.setSyllabusOriginalFilename("syllabus.pdf");
+        existing.setSyllabusSizeBytes(123L);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+        when(storageService.presignedDownloadUrl("course-syllabi/1/key"))
+                .thenReturn("https://objectstore.local/presigned");
+        when(storageService.getPresignedUrlExpirySeconds()).thenReturn(600);
+
+        SyllabusDTO result = courseService.getSyllabusDownload(1L);
+
+        assertEquals("syllabus.pdf", result.getFilename());
+        assertEquals(123L, result.getSizeBytes());
+        assertEquals("https://objectstore.local/presigned", result.getDownloadUrl());
+        assertEquals(600, result.getExpiresInSeconds());
+    }
+
+
+    // DELETE SYLLABUS
+
+    @Test
+    void testDeleteSyllabusCourseNotFound() {
+
+        when(repository.findById(99L)).thenReturn(Optional.empty());
+
+        assertThrows(
+                CourseNotFoundException.class,
+                () -> courseService.deleteSyllabus(99L));
+    }
+
+    @Test
+    void testDeleteSyllabusThrowsWhenNoneUploaded() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        assertThrows(
+                CourseSyllabusNotFoundException.class,
+                () -> courseService.deleteSyllabus(1L));
+
+        verify(storageService, never()).delete(anyString());
+    }
+
+    @Test
+    void testDeleteSyllabusSucceeds() {
+
+        Course existing = course(1L, "CS101", "Intro to CS", 30);
+        existing.setSyllabusObjectKey("course-syllabi/1/key");
+        existing.setSyllabusOriginalFilename("syllabus.pdf");
+        existing.setSyllabusContentType("application/pdf");
+        existing.setSyllabusSizeBytes(123L);
+
+        when(repository.findById(1L)).thenReturn(Optional.of(existing));
+
+        courseService.deleteSyllabus(1L);
+
+        verify(storageService).delete("course-syllabi/1/key");
+        assertEquals(null, existing.getSyllabusObjectKey());
+        assertEquals(null, existing.getSyllabusOriginalFilename());
+        assertEquals(null, existing.getSyllabusContentType());
+        assertEquals(null, existing.getSyllabusSizeBytes());
+        verify(repository).save(existing);
     }
 }

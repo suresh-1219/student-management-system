@@ -53,22 +53,72 @@ services:
       timeout: 5s
       retries: 10
 
+  seaweedfs:
+    # chrislusf/seaweedfs, not MinIO: this feature was originally built
+    # against MinIO, but MinIO discontinued free container images (pulled
+    # from both Docker Hub and quay.io after this project started using
+    # them) and its last free release has an unpatched critical CVE, so it
+    # is no longer run here at all. SeaweedFS's S3 gateway is the same S3
+    # protocol StorageService already speaks (via the io.minio client
+    # library, which works against any S3-compatible server), is
+    # Apache-2.0, and is actively maintained.
+    image: chrislusf/seaweedfs:latest
+    restart: unless-stopped
+    # Writes an S3 identity (access key/secret - matching application
+    # .properties' app.s3.* defaults unless overridden below) to a config
+    # file, then starts an all-in-one master+volume+filer+S3-gateway
+    # process. No separate master/volume/filer containers are needed for
+    # this project's scale.
+    entrypoint: ["/bin/sh", "-c"]
+    command:
+      - |
+        mkdir -p /etc/seaweedfs && cat > /etc/seaweedfs/s3.json <<'EOF'
+        {
+          "identities": [
+            {
+              "name": "app",
+              "credentials": [
+                { "accessKey": "${S3_ACCESS_KEY:-course-syllabi-app}", "secretKey": "${S3_SECRET_KEY:-change-me-course-syllabi-secret}" }
+              ],
+              "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+            }
+          ]
+        }
+        EOF
+        exec weed server -dir=/data -s3 -s3.port=8333 -s3.config=/etc/seaweedfs/s3.json
+    ports:
+      # 8333 = the S3-compatible API the app talks to. SeaweedFS has no
+      # MinIO-style web console, so there's nothing else to expose here.
+      - "8333:8333"
+    volumes:
+      - student-object-storage-data:/data
+    # No healthcheck: this image's exact toolset (wget/curl availability)
+    # isn't something to guess at. StorageService already tolerates the
+    # object store being briefly unavailable at startup (see
+    # StorageService#ensureBucketExists), so "app" below depends on this
+    # service starting, not on a health probe passing.
+
   app:
     build: .
     restart: unless-stopped
     ports:
       - "9090:9090"
     environment:
-      # Inside the Docker network, MySQL, Redis and RabbitMQ are reached by
-      # their service names ("db", "redis", "rabbitmq") on their container
-      # ports - NOT localhost (that only applies to tools like Workbench
-      # running on your own machine, via the "3307:3306" port mapping above).
+      # Inside the Docker network, MySQL, Redis, RabbitMQ and the object
+      # store are reached by their service names ("db", "redis",
+      # "rabbitmq", "seaweedfs") on their container ports - NOT localhost
+      # (that only applies to tools like Workbench running on your own
+      # machine, via the "3307:3306" port mapping above).
       DB_URL: jdbc:mysql://db:3306/student_db
       DB_USERNAME: root
       DB_PASSWORD: ${DB_PASSWORD:?Set DB_PASSWORD in .env}
       JWT_SECRET: ${JWT_SECRET:?Set JWT_SECRET in .env}
       REDIS_HOST: redis
       RABBITMQ_HOST: rabbitmq
+      S3_ENDPOINT: http://seaweedfs:8333
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-course-syllabi-app}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-change-me-course-syllabi-secret}
+      S3_BUCKET: ${S3_BUCKET:-course-syllabi}
       # This stack always has a broker, so turn the listener on (see
       # application.properties - it's off by default for a plain
       # `mvn spring-boot:run` with no RabbitMQ running).
@@ -89,6 +139,9 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      seaweedfs:
+        condition: service_started
 
 volumes:
   student-db-data:
+  student-object-storage-data:

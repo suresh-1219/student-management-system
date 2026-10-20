@@ -149,6 +149,16 @@
     <scope>runtime</scope>
 </dependency>
 
+<!-- io.minio:minio - despite the name, a generic S3-protocol client, not
+     something that requires running MinIO itself; see StorageService for
+     why this project points it at a SeaweedFS S3 gateway instead. Pulls in
+     okhttp transitively; no version pin needed beyond the client itself. -->
+<dependency>
+    <groupId>io.minio</groupId>
+    <artifactId>minio</artifactId>
+    <version>8.5.17</version>
+</dependency>
+
 	</dependencies>
 
 	<build>
