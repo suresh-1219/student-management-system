@@ -3,11 +3,12 @@ package com.suresh.sms.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
+import java.time.Duration;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,10 +20,15 @@ import org.springframework.test.util.ReflectionTestUtils;
 
 import com.suresh.sms.exception.StorageException;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.circuitbreaker.CircuitBreakerConfig;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
+import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 
@@ -39,6 +45,17 @@ class StorageServiceTest {
     void setUp() {
         ReflectionTestUtils.setField(storageService, "bucket", "course-syllabi");
         ReflectionTestUtils.setField(storageService, "presignedUrlExpirySeconds", 600);
+
+        // Real (non-mocked) instances - resilience4j's own classes are
+        // plain enough to construct directly, no Spring context needed -
+        // configured so every test below this point gets exactly ONE
+        // attempt, same as before this drop added retry/circuit-breaker
+        // wiring. Tests further down that specifically exercise retry or
+        // circuit-breaker behavior install their own instances instead.
+        ReflectionTestUtils.setField(storageService, "uploadRetry",
+                Retry.of("test-upload", RetryConfig.custom().maxAttempts(1).build()));
+        ReflectionTestUtils.setField(storageService, "uploadCircuitBreaker",
+                CircuitBreaker.ofDefaults("test-upload"));
     }
 
 
@@ -83,9 +100,9 @@ class StorageServiceTest {
     @Test
     void testUploadSucceeds() throws Exception {
 
-        InputStream data = new ByteArrayInputStream("content".getBytes());
-
-        storageService.upload("courses/1/abc", data, 7L, "application/pdf");
+        storageService.upload(
+                "courses/1/abc", () -> new ByteArrayInputStream("content".getBytes()),
+                7L, "application/pdf");
 
         verify(minioClient).putObject(any(PutObjectArgs.class));
     }
@@ -93,14 +110,63 @@ class StorageServiceTest {
     @Test
     void testUploadWrapsFailureInStorageException() throws Exception {
 
-        InputStream data = new ByteArrayInputStream("content".getBytes());
-
         when(minioClient.putObject(any(PutObjectArgs.class)))
                 .thenThrow(errorResponseException());
 
         assertThrows(
                 StorageException.class,
-                () -> storageService.upload("courses/1/abc", data, 7L, "application/pdf"));
+                () -> storageService.upload(
+                        "courses/1/abc", () -> new ByteArrayInputStream("content".getBytes()),
+                        7L, "application/pdf"));
+    }
+
+    @Test
+    void testUploadRetriesOnTransientFailureThenSucceeds() throws Exception {
+
+        // Its own Retry instance, not the one-attempt default from setUp():
+        // this is the one test that actually exercises the "ride out a
+        // transient blip" behavior the class Javadoc describes. A near-zero
+        // wait keeps the test fast - the point being tested is the retry
+        // count, not the backoff timing.
+        ReflectionTestUtils.setField(storageService, "uploadRetry",
+                Retry.of("test-upload-retry",
+                        RetryConfig.custom().maxAttempts(3).waitDuration(Duration.ofMillis(5)).build()));
+
+        when(minioClient.putObject(any(PutObjectArgs.class)))
+                .thenThrow(errorResponseException())
+                .thenThrow(errorResponseException())
+                .thenReturn(org.mockito.Mockito.mock(ObjectWriteResponse.class));
+
+        storageService.upload(
+                "courses/1/abc", () -> new ByteArrayInputStream("content".getBytes()),
+                7L, "application/pdf");
+
+        // Two failed attempts, then a third that succeeds - proves a
+        // transient failure doesn't fail the request, not just that
+        // *a* call eventually went through.
+        verify(minioClient, times(3)).putObject(any(PutObjectArgs.class));
+    }
+
+    @Test
+    void testUploadFailsFastWhenCircuitBreakerOpen() throws Exception {
+
+        // Forced open rather than tripped by real failures: this test is
+        // about what happens to a call once the circuit IS open, not about
+        // how many failures it takes to get there (ResilienceConfig's
+        // threshold is covered by inspection, not by re-deriving it here).
+        CircuitBreaker openBreaker = CircuitBreaker.ofDefaults("test-upload-open");
+        openBreaker.transitionToOpenState();
+        ReflectionTestUtils.setField(storageService, "uploadCircuitBreaker", openBreaker);
+
+        assertThrows(
+                StorageException.class,
+                () -> storageService.upload(
+                        "courses/1/abc", () -> new ByteArrayInputStream("content".getBytes()),
+                        7L, "application/pdf"));
+
+        // Refused by the breaker before ever reaching the client - the
+        // "fails fast" half of the retry/circuit-breaker pairing.
+        verify(minioClient, org.mockito.Mockito.never()).putObject(any(PutObjectArgs.class));
     }
 
 

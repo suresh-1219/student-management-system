@@ -10,6 +10,7 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -17,11 +18,16 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.amqp.AmqpException;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import com.suresh.sms.config.RabbitMQConfig;
 import com.suresh.sms.entity.AttendanceStatus;
 import com.suresh.sms.event.AttendanceRecordedEvent;
 import com.suresh.sms.event.GradeRecordedEvent;
+
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 
 /**
  * {@code EventPublisher} is documented as a best-effort, "degrades
@@ -38,6 +44,22 @@ class EventPublisherTest {
 
     @InjectMocks
     private EventPublisher eventPublisher;
+
+    @BeforeEach
+    void setUp() {
+
+        // @InjectMocks only wires rabbitTemplate - circuitBreaker/retry
+        // (Drop G4) are @Autowired in production, not @Mock fields here, so
+        // without this they'd be null and every publish() call would NPE
+        // before ever reaching rabbitTemplate. Real (non-mocked)
+        // resilience4j instances, same as StorageServiceTest's equivalent
+        // setup: one attempt, so a stubbed broker failure below is actually
+        // exercised instead of being short-circuited by a null field.
+        ReflectionTestUtils.setField(eventPublisher, "retry",
+                Retry.of("test-event-publisher", RetryConfig.custom().maxAttempts(1).build()));
+        ReflectionTestUtils.setField(eventPublisher, "circuitBreaker",
+                CircuitBreaker.ofDefaults("test-event-publisher"));
+    }
 
     private GradeRecordedEvent gradeEvent() {
         return new GradeRecordedEvent(

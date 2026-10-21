@@ -2,19 +2,24 @@ package com.suresh.sms.service;
 
 import java.io.InputStream;
 import java.util.concurrent.TimeUnit;
+import java.util.function.Supplier;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import com.suresh.sms.exception.StorageException;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
 import io.minio.BucketExistsArgs;
 import io.minio.GetPresignedObjectUrlArgs;
 import io.minio.MakeBucketArgs;
 import io.minio.MinioClient;
+import io.minio.ObjectWriteResponse;
 import io.minio.PutObjectArgs;
 import io.minio.RemoveObjectArgs;
 import io.minio.errors.MinioException;
@@ -45,6 +50,17 @@ import jakarta.annotation.PostConstruct;
  * {@code EventPublisher} for RabbitMQ, failures here are NOT swallowed:
  * object storage is the actual point of a syllabus upload/download/delete
  * request, so a failure here must fail that request.
+ *
+ * <p>{@link #upload} specifically is also wrapped in a retry + circuit
+ * breaker (Drop G4; see {@code ResilienceConfig}): a couple of quick
+ * retries ride out a transient network blip instead of failing a request
+ * that would otherwise have succeeded, and once the object store is
+ * clearly down, the circuit opens so a request fails in microseconds with
+ * the same 502 instead of waiting out however long several real attempts
+ * against an unreachable server would take. This does not change the "not
+ * swallowed" contract above - once retries are exhausted (or the circuit
+ * is open), the failure still surfaces as a {@link StorageException}, same
+ * as before this drop.
  */
 @Service
 public class StorageService {
@@ -53,6 +69,14 @@ public class StorageService {
 
     @Autowired
     private MinioClient minioClient;
+
+    @Autowired
+    @Qualifier("objectStorageUploadCircuitBreaker")
+    private CircuitBreaker uploadCircuitBreaker;
+
+    @Autowired
+    @Qualifier("objectStorageUploadRetry")
+    private Retry uploadRetry;
 
     @Value("${app.s3.bucket}")
     private String bucket;
@@ -88,23 +112,64 @@ public class StorageService {
         }
     }
 
+    /**
+     * @param dataSupplier opens a FRESH stream for each attempt, rather
+     *     than taking a single already-opened {@link InputStream} - a retry
+     *     (see the class Javadoc) needs to read the object's bytes from the
+     *     start again, not continue a stream a failed first attempt may
+     *     have already partially read or closed. Callers that already have
+     *     a reusable source ({@code MultipartFile#getInputStream()}, a file
+     *     {@link java.nio.file.Path}) just wrap it in a small lambda; see
+     *     {@code CourseService#uploadSyllabus} and {@code
+     *     ReportExportJobListener#completeExport}.
+     */
     public void upload(
             String objectKey,
-            InputStream data,
+            Supplier<InputStream> dataSupplier,
             long size,
             String contentType) {
 
+        Supplier<ObjectWriteResponse> attempt = () -> {
+            try (InputStream data = dataSupplier.get()) {
+                return minioClient.putObject(
+                        PutObjectArgs.builder()
+                                .bucket(bucket)
+                                .object(objectKey)
+                                .stream(data, size, -1)
+                                .contentType(contentType)
+                                .build());
+            } catch (Exception ex) {
+                // Supplier#get() can't declare a checked exception, so any
+                // checked exception the client (or dataSupplier itself)
+                // throws has to be wrapped to get back out of this lambda -
+                // unwrapped again just below, once retries are exhausted.
+                throw new UploadAttemptFailed(ex);
+            }
+        };
+
+        Supplier<ObjectWriteResponse> resilient = Retry.decorateSupplier(
+                uploadRetry, CircuitBreaker.decorateSupplier(uploadCircuitBreaker, attempt));
+
         try {
-            minioClient.putObject(
-                    PutObjectArgs.builder()
-                            .bucket(bucket)
-                            .object(objectKey)
-                            .stream(data, size, -1)
-                            .contentType(contentType)
-                            .build());
+            resilient.get();
+        } catch (UploadAttemptFailed ex) {
+            throw new StorageException(
+                    "Failed to upload object '" + objectKey + "'", ex.getCause());
         } catch (Exception ex) {
+            // Includes CallNotPermittedException (circuit open) - same
+            // "the upload didn't happen" outcome from the caller's point of
+            // view, so the same exception type/message either way.
             throw new StorageException(
                     "Failed to upload object '" + objectKey + "'", ex);
+        }
+    }
+
+    /** Unwraps back to the real cause in {@link #upload}'s catch block. */
+    private static final class UploadAttemptFailed extends RuntimeException {
+        private static final long serialVersionUID = 1L;
+
+        UploadAttemptFailed(Throwable cause) {
+            super(cause);
         }
     }
 

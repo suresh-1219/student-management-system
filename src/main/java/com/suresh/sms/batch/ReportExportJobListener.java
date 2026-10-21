@@ -1,7 +1,7 @@
 package com.suresh.sms.batch;
 
 import java.io.IOException;
-import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
@@ -87,9 +87,18 @@ public class ReportExportJobListener implements JobExecutionListener {
         try {
             long size = Files.size(path);
 
-            try (InputStream data = Files.newInputStream(path)) {
-                storageService.upload(objectKey, data, size, "text/csv");
-            }
+            // A Supplier, not a single already-opened InputStream:
+            // StorageService may retry the upload (see Drop G4's
+            // ResilienceConfig), and a retry needs to read the file from
+            // the start again, not continue an already-partially-read (or
+            // already-closed) stream from a failed first attempt.
+            storageService.upload(objectKey, () -> {
+                try {
+                    return Files.newInputStream(path);
+                } catch (IOException ex) {
+                    throw new UncheckedIOException(ex);
+                }
+            }, size, "text/csv");
 
             export.setStatus(ReportExportStatus.COMPLETED);
             export.setObjectKey(objectKey);

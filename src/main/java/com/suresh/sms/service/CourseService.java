@@ -2,9 +2,11 @@ package com.suresh.sms.service;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.UncheckedIOException;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import org.modelmapper.ModelMapper;
@@ -22,7 +24,6 @@ import com.suresh.sms.exception.CourseNotFoundException;
 import com.suresh.sms.exception.CourseSyllabusNotFoundException;
 import com.suresh.sms.exception.DuplicateCourseException;
 import com.suresh.sms.exception.InvalidRequestException;
-import com.suresh.sms.exception.StorageException;
 import com.suresh.sms.exception.TeacherNotFoundException;
 import com.suresh.sms.repository.CourseRepository;
 import com.suresh.sms.repository.EnrollmentRepository;
@@ -183,11 +184,21 @@ public class CourseService {
 
         String objectKey = "course-syllabi/" + courseId + "/" + UUID.randomUUID();
 
-        try (InputStream data = file.getInputStream()) {
-            storageService.upload(objectKey, data, file.getSize(), file.getContentType());
-        } catch (IOException ex) {
-            throw new StorageException("Failed to read uploaded syllabus file", ex);
-        }
+        // A Supplier, not a single already-opened InputStream: StorageService
+        // may retry the upload (see Drop G4's ResilienceConfig), and a
+        // retry needs a FRESH stream, not one already partially/fully
+        // consumed by a failed first attempt. MultipartFile#getInputStream()
+        // is documented as safe to call more than once for exactly this
+        // reason.
+        Supplier<InputStream> dataSupplier = () -> {
+            try {
+                return file.getInputStream();
+            } catch (IOException ex) {
+                throw new UncheckedIOException("Failed to read uploaded syllabus file", ex);
+            }
+        };
+
+        storageService.upload(objectKey, dataSupplier, file.getSize(), file.getContentType());
 
         course.setSyllabusObjectKey(objectKey);
         course.setSyllabusOriginalFilename(file.getOriginalFilename());

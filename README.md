@@ -15,6 +15,7 @@ The Student Management System is a backend application designed to manage studen
 - Asynchronous notifications via RabbitMQ, with a dead-letter queue for failed deliveries
 - Course syllabus file upload/download/delete, backed by S3-compatible object storage (SeaweedFS)
 - CSV report export (all students) as an async Spring Batch job, with the result uploaded to object storage and a presigned download link
+- Circuit breaker + retry (Resilience4j) around RabbitMQ publishing and object-storage uploads, so a transient blip is ridden out and a real outage fails fast instead of hanging
 - Search, sorting, and pagination support
 - MySQL database integration
 - Spring Data JPA and Hibernate
@@ -27,7 +28,7 @@ The Student Management System is a backend application designed to manage studen
 
 ## ✅ Testing
 
-- 290+ unit, controller, and integration tests written using JUnit 5 and Mockito
+- 300+ unit, controller, and integration tests written using JUnit 5 and Mockito
 - Verified via JaCoCo (see `target/site/jacoco/index.html` after running tests)
 - Covers the service layer, controllers, JWT filter/util, DTOs, entities, exception handling, database migrations and repository queries
 - Database-backed tests run against a real, throwaway MySQL container via [Testcontainers](https://testcontainers.com/) - **Docker must be running**, but no local MySQL, `JWT_SECRET` or `DB_PASSWORD` is needed to run `mvn test`
@@ -47,6 +48,7 @@ The Student Management System is a backend application designed to manage studen
 | RabbitMQ | Async domain events -> notifications (optional locally; included in `docker compose`) |
 | SeaweedFS | S3-compatible object storage for course syllabus files and CSV report exports (included in `docker compose`) |
 | Spring Batch | Chunk-oriented CSV report export, run as an async job rather than inline in a request |
+| Resilience4j | Circuit breaker + retry around RabbitMQ publishing and object-storage uploads |
 | JWT (jjwt) | Authentication |
 | Spring Security | Authorization |
 | ModelMapper | Entity-DTO conversion |
@@ -235,6 +237,12 @@ The bucket (`course-syllabi` by default) is created automatically on startup if 
 The job reads students from the database a page at a time (so memory use stays flat regardless of table size) and writes them straight to a local CSV file; once the job finishes, a listener uploads that file to the same S3-compatible object store the course syllabus feature uses and deletes the local copy - clients never download through this app's own disk. Polling `GET /reports/exports/{id}/download` before the export has finished returns `409 Conflict`, not a broken link.
 
 Export requests are ADMIN-only throughout (unlike most other `GET`s in this API): a student export is a bulk dump of everyone's name, email and fee, not a single record a USER has a legitimate reason to read.
+
+### Resilience (circuit breaker + retry)
+
+Two external calls get a [Resilience4j](https://resilience4j.readme.io/) circuit breaker + retry on top of their existing failure handling (see `ResilienceConfig`): publishing a domain event to RabbitMQ (`EventPublisher`), and uploading to object storage (`StorageService#upload`). Both get a couple of quick retries (200-300 ms apart) to ride out a transient blip, and a circuit breaker that opens after a run of failures so, once a dependency is clearly down, every subsequent call fails in microseconds instead of each one waiting out its own doomed attempt.
+
+This changes *how fast* each one fails, not *what* the failure means: a RabbitMQ publish is still a swallowed best-effort side effect either way (see [Async notifications](#async-notifications-rabbitmq)), and an object-storage upload still ends in the same `502 Bad Gateway` either way (see [Course syllabus](#course-syllabus-s3-compatible-object-storage)) - retries exhausted or the circuit simply refusing the call produce the same outcome from the caller's point of view. `management.health.circuitbreakers.enabled=false` keeps a tripped breaker from flipping `/actuator/health` to `DOWN`, consistent with both dependencies already being treated as non-fatal. Circuit/retry state and call counts are on `GET /actuator/prometheus` alongside every other metric in this app.
 
 ### Error responses
 

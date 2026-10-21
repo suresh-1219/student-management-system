@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
 import java.io.ByteArrayInputStream;
-import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
@@ -24,6 +23,9 @@ import org.testcontainers.utility.DockerImageName;
 import com.suresh.sms.exception.StorageException;
 import com.suresh.sms.support.AbstractIntegrationTest;
 
+import io.github.resilience4j.circuitbreaker.CircuitBreaker;
+import io.github.resilience4j.retry.Retry;
+import io.github.resilience4j.retry.RetryConfig;
 import io.minio.MinioClient;
 
 /**
@@ -119,9 +121,8 @@ class StorageServiceIntegrationTest extends AbstractIntegrationTest {
         String objectKey = "it/" + System.nanoTime() + "/syllabus.txt";
         byte[] content = "a real syllabus for integration testing".getBytes(StandardCharsets.UTF_8);
 
-        try (InputStream data = new ByteArrayInputStream(content)) {
-            storageService.upload(objectKey, data, content.length, "text/plain");
-        }
+        storageService.upload(
+                objectKey, () -> new ByteArrayInputStream(content), content.length, "text/plain");
 
         String url = storageService.presignedDownloadUrl(objectKey);
 
@@ -169,10 +170,18 @@ class StorageServiceIntegrationTest extends AbstractIntegrationTest {
                         .build());
         ReflectionTestUtils.setField(misconfigured, "bucket", "bucket-that-was-never-created");
         ReflectionTestUtils.setField(misconfigured, "presignedUrlExpirySeconds", 600);
+        // Built by hand rather than by Spring, so ResilienceConfig's beans
+        // never get autowired - a single, fast attempt is all this test
+        // needs anyway (it isn't exercising retry behavior, just that a
+        // real failure still surfaces as StorageException).
+        ReflectionTestUtils.setField(misconfigured, "uploadCircuitBreaker",
+                CircuitBreaker.ofDefaults("test-missing-bucket"));
+        ReflectionTestUtils.setField(misconfigured, "uploadRetry",
+                Retry.of("test-missing-bucket", RetryConfig.custom().maxAttempts(1).build()));
 
         assertThrows(
                 StorageException.class,
                 () -> misconfigured.upload(
-                        "x", new ByteArrayInputStream("x".getBytes()), 1L, "text/plain"));
+                        "x", () -> new ByteArrayInputStream("x".getBytes()), 1L, "text/plain"));
     }
 }
