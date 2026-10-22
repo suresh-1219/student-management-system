@@ -86,10 +86,17 @@ CREATE TABLE BATCH_JOB_EXECUTION_CONTEXT  (
 	references BATCH_JOB_EXECUTION(JOB_EXECUTION_ID)
 ) ENGINE=InnoDB;
 
+-- Spring Batch's own schema-mysql.sql gives these three *_SEQ tables only a
+-- UNIQUE constraint, no PRIMARY KEY - fine for plain MySQL, but a managed
+-- host that enforces sql_require_primary_key (Aiven does, by default)
+-- rejects CREATE TABLE outright with error 3750 otherwise. Each of these
+-- tables holds exactly one row, so promoting UNIQUE_KEY to the primary key
+-- changes nothing about how Spring Batch uses them, just satisfies that
+-- setting.
 CREATE TABLE BATCH_STEP_EXECUTION_SEQ (
 	ID BIGINT NOT NULL,
 	UNIQUE_KEY CHAR(1) NOT NULL,
-	constraint UNIQUE_KEY_UN unique (UNIQUE_KEY)
+	PRIMARY KEY (UNIQUE_KEY)
 ) ENGINE=InnoDB;
 
 INSERT INTO BATCH_STEP_EXECUTION_SEQ (ID, UNIQUE_KEY) select * from (select 0 as ID, '0' as UNIQUE_KEY) as tmp where not exists(select * from BATCH_STEP_EXECUTION_SEQ);
@@ -97,7 +104,7 @@ INSERT INTO BATCH_STEP_EXECUTION_SEQ (ID, UNIQUE_KEY) select * from (select 0 as
 CREATE TABLE BATCH_JOB_EXECUTION_SEQ (
 	ID BIGINT NOT NULL,
 	UNIQUE_KEY CHAR(1) NOT NULL,
-	constraint UNIQUE_KEY_UN unique (UNIQUE_KEY)
+	PRIMARY KEY (UNIQUE_KEY)
 ) ENGINE=InnoDB;
 
 INSERT INTO BATCH_JOB_EXECUTION_SEQ (ID, UNIQUE_KEY) select * from (select 0 as ID, '0' as UNIQUE_KEY) as tmp where not exists(select * from BATCH_JOB_EXECUTION_SEQ);
@@ -105,7 +112,7 @@ INSERT INTO BATCH_JOB_EXECUTION_SEQ (ID, UNIQUE_KEY) select * from (select 0 as 
 CREATE TABLE BATCH_JOB_SEQ (
 	ID BIGINT NOT NULL,
 	UNIQUE_KEY CHAR(1) NOT NULL,
-	constraint UNIQUE_KEY_UN unique (UNIQUE_KEY)
+	PRIMARY KEY (UNIQUE_KEY)
 ) ENGINE=InnoDB;
 
 INSERT INTO BATCH_JOB_SEQ (ID, UNIQUE_KEY) select * from (select 0 as ID, '0' as UNIQUE_KEY) as tmp where not exists(select * from BATCH_JOB_SEQ);
