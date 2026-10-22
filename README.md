@@ -391,6 +391,27 @@ The image is a multi-stage build (compiles inside the image, so a separate
 `mvn package` step isn't needed), runs as a non-root user, and reports
 health via `/actuator/health`.
 
+### Deploy to Render
+
+The repo includes a [Render Blueprint](https://render.com/docs/blueprint-spec) (`render.yaml`) that deploys the app itself from the existing `Dockerfile` - no separate Dockerfile or build config needed on Render's side.
+
+Render has no managed MySQL, so this deploys **only the app**, pointed at an external MySQL database you provide. Redis, RabbitMQ and the S3-compatible object store are all optional dependencies that degrade gracefully when absent (see [Environment Variables](#environment-variables) below) - none of them are part of this deployment, so on a bare deploy:
+
+- Auth, students, courses, teachers, enrollments, grades and attendance all work normally.
+- Course syllabus upload/download, CSV report export, and RabbitMQ-backed notifications do **not** work (no object store or broker is provisioned).
+
+**1. Get a free MySQL database.** [Aiven's free MySQL tier](https://aiven.io/free-mysql-database) works well for this - no credit card, 1 GB storage, sign up with GitHub or Google, create a MySQL service, and copy its host, port, username, password and database name from the console. Most free MySQL hosts (Aiven included) require an SSL connection; build your `DB_URL` as:
+
+```
+jdbc:mysql://<host>:<port>/<database>?sslMode=REQUIRED
+```
+
+**2. Create the Blueprint on Render.** In the [Render dashboard](https://dashboard.render.com/), **New +** -> **Blueprint**, connect this GitHub repo, and Render reads `render.yaml` automatically. You'll be prompted for the `sync: false` values: `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, and (optional, first deploy only) `ADMIN_PASSWORD` to seed an admin account. `JWT_SECRET` is generated for you.
+
+**3. Deploy and verify.** Render builds the Docker image and starts the service; watch the logs for Flyway's migrations running against your MySQL instance. Once it's up, `https://<your-service>.onrender.com/actuator/health` should report `UP`, and `https://<your-service>.onrender.com/swagger-ui.html` gives you a live, clickable API to demo.
+
+The free plan sleeps after a period of inactivity, so the first request after a while takes a few extra seconds to wake it back up - normal for a free-tier demo, not a sign anything is broken.
+
 ### Run tests + coverage report
 
 ```bash

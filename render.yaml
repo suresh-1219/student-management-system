@@ -1,0 +1,56 @@
+# Render Blueprint (https://render.com/docs/blueprint-spec) for a live,
+# demoable deployment of this app.
+#
+# This deploys ONLY the app itself, from the existing Dockerfile - not the
+# full docker-compose.yml stack. Render has no managed MySQL, so the
+# database is expected to be an external MySQL instance you point DB_URL at
+# (see README.md's "Deploy to Render" section for a free option). Redis,
+# RabbitMQ and the S3-compatible object store are all optional dependencies
+# that degrade gracefully when absent (see application.properties) - none
+# of them are provisioned here, so a syllabus upload/download, a CSV report
+# export, and RabbitMQ-backed notifications will not work on this
+# deployment. Everything else (auth, students, courses, teachers,
+# enrollments, grades, attendance) works normally.
+#
+# To deploy: push this file, then in the Render dashboard choose
+# "New +" -> "Blueprint" and point it at this repo. Render reads this file
+# and creates the service below; you fill in the `sync: false` values
+# yourself when prompted.
+services:
+  - type: web
+    name: student-management-system
+    runtime: docker
+    plan: free
+    healthCheckPath: /actuator/health
+    envVars:
+      # Turns on prod logging/behavior (see README's "Profiles" section) -
+      # Docker Compose sets this too.
+      - key: SPRING_PROFILES_ACTIVE
+        value: prod
+
+      # A full JDBC URL to your external MySQL instance, e.g.
+      # jdbc:mysql://<host>:<port>/<database>?sslMode=REQUIRED
+      # (most free MySQL hosts, including Aiven, require an SSL connection).
+      - key: DB_URL
+        sync: false
+      - key: DB_USERNAME
+        sync: false
+      - key: DB_PASSWORD
+        sync: false
+
+      # Render generates a random 256-bit value for this on first deploy -
+      # comfortably over the 32-character minimum - so there's nothing to
+      # fill in yourself.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Optional: set this (any value) to seed an ADMIN account on first
+      # startup, so there's a way to log in at all on a brand-new database.
+      # Leave unset on later deploys once the account already exists.
+      - key: ADMIN_PASSWORD
+        sync: false
+
+      # On for a public demo so /swagger-ui.html works without extra setup.
+      # Turn this off (set to "false") if this deployment stops being a demo.
+      - key: SWAGGER_ENABLED
+        value: "true"
