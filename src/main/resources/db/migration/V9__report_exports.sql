@@ -36,7 +36,14 @@ CREATE TABLE BATCH_JOB_EXECUTION  (
 	references BATCH_JOB_INSTANCE(JOB_INSTANCE_ID)
 ) ENGINE=InnoDB;
 
+-- Spring Batch's own schema-mysql.sql gives this table no primary key at
+-- all (just the JOB_EXEC_PARAMS_FK foreign key) - fine for plain MySQL, but
+-- rejected outright (error 3750) by a managed host that enforces
+-- sql_require_primary_key (Aiven does, by default). PARAM_ID is a surrogate
+-- key added only to satisfy that setting; Spring Batch itself never reads
+-- or writes it, so this changes nothing about how the table is used.
 CREATE TABLE BATCH_JOB_EXECUTION_PARAMS  (
+	PARAM_ID BIGINT NOT NULL AUTO_INCREMENT PRIMARY KEY,
 	JOB_EXECUTION_ID BIGINT NOT NULL ,
 	PARAMETER_NAME VARCHAR(100) NOT NULL ,
 	PARAMETER_TYPE VARCHAR(100) NOT NULL ,
