@@ -1,6 +1,20 @@
 # Student Management System
 
+[![CI](https://github.com/suresh-1219/student-management-system/actions/workflows/ci.yml/badge.svg)](https://github.com/suresh-1219/student-management-system/actions/workflows/ci.yml)
+[![Live Demo](https://img.shields.io/badge/demo-live-brightgreen)](https://student-management-system-sh46.onrender.com/swagger-ui.html)
+[![Java](https://img.shields.io/badge/Java-21-orange)](https://openjdk.org/)
+[![Dependabot](https://img.shields.io/badge/Dependabot-enabled-blue)](https://github.com/suresh-1219/student-management-system/blob/master/.github/dependabot.yml)
+
 A secure and containerized Student Management System built using Spring Boot, Spring Data JPA, MySQL, JWT Authentication, Swagger/OpenAPI, and Docker.
+
+## 🌐 Live Demo
+
+A running instance (app only, no object storage/broker - see [Deploy to Render](#deploy-to-render) below for exactly what that means) is deployed on Render's free tier:
+
+- **Swagger UI:** <https://student-management-system-sh46.onrender.com/swagger-ui.html>
+- **Health check:** <https://student-management-system-sh46.onrender.com/actuator/health>
+
+It's a free-tier instance, so it spins down after inactivity - the first request after a while can take 50+ seconds to wake it back up. That's normal, not a sign anything's broken.
 
 ## 📌 Project Overview
 
